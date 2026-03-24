@@ -6,13 +6,11 @@ import { Waves, ShieldAlert, Sparkles } from "lucide-react";
 export default function HomePage() {
   return (
     <main className="min-h-screen relative overflow-hidden">
-      {/* Background Gradient Glow */}
       <div className="absolute inset-0 bg-gradient-to-br from-blue-100 via-white to-cyan-100" />
       <div className="absolute top-0 left-0 w-[500px] h-[500px] bg-blue-300/20 blur-3xl rounded-full" />
       <div className="absolute bottom-0 right-0 w-[500px] h-[500px] bg-cyan-300/20 blur-3xl rounded-full" />
 
       <div className="relative z-10 mx-auto max-w-6xl px-6 py-10">
-        {/* Header */}
         <div className="text-center space-y-6 mb-16">
           <Badge className="px-4 py-1 rounded-full bg-blue-600 text-white">
             Aquatic Biosecurity Simulation
@@ -23,8 +21,8 @@ export default function HomePage() {
           </h1>
 
           <p className="text-lg text-slate-600 max-w-2xl mx-auto">
-            Experience a realistic biosecurity emergency response scenario with
-            structured phases, decision-making, and AI-powered feedback.
+            Explore a realistic aquatic biosecurity emergency scenario through
+            structured phases, free-text response, and AI-guided feedback.
           </p>
 
           <div className="flex flex-wrap items-center justify-center gap-4 pt-2">
@@ -55,29 +53,28 @@ export default function HomePage() {
           </div>
         </div>
 
-        {/* Feature Cards */}
         <div className="grid md:grid-cols-3 gap-6">
           <div className="bg-white/70 backdrop-blur-lg border rounded-2xl p-6 shadow-sm">
             <Waves className="mb-4 h-8 w-8 text-blue-600" />
-            <h3 className="font-semibold text-lg">6 Phase Simulation</h3>
+            <h3 className="font-semibold text-lg">Structured Phase Flow</h3>
             <p className="text-sm text-slate-600 mt-2">
-              Structured real-world emergency response phases.
+              Progress through a realistic multi-phase aquatic emergency scenario.
             </p>
           </div>
 
           <div className="bg-white/70 backdrop-blur-lg border rounded-2xl p-6 shadow-sm">
             <ShieldAlert className="mb-4 h-8 w-8 text-red-500" />
-            <h3 className="font-semibold text-lg">Decision Impact</h3>
+            <h3 className="font-semibold text-lg">Adaptive Pathways</h3>
             <p className="text-sm text-slate-600 mt-2">
-              Your choices affect outcomes and consequences.
+              Your responses shape what happens next, including recovery and escalation paths.
             </p>
           </div>
 
           <div className="bg-white/70 backdrop-blur-lg border rounded-2xl p-6 shadow-sm">
             <Sparkles className="mb-4 h-8 w-8 text-purple-500" />
-            <h3 className="font-semibold text-lg">AI Feedback</h3>
+            <h3 className="font-semibold text-lg">AI Phase Feedback</h3>
             <p className="text-sm text-slate-600 mt-2">
-              Get intelligent preparedness insights at the end.
+              Receive guided feedback on each phase based on key operational themes.
             </p>
           </div>
         </div>

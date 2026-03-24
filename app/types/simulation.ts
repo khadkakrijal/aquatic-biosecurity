@@ -6,13 +6,17 @@ export type ThemeCategory =
   | "Communication"
   | "Expectations";
 
-export type DecisionImpact = "strong" | "moderate" | "weak";
+export type EvaluationDecision = "pass" | "partial" | "fail";
+export type NodeKind = "main" | "remedial" | "failure";
 
 export interface Criterion {
   id: string;
   text: string;
   consequence: string;
   theme: ThemeCategory;
+  required?: boolean;
+  weight?: number;
+  keywords?: string[];
 }
 
 export interface ReflectionQuestion {
@@ -22,21 +26,22 @@ export interface ReflectionQuestion {
   placeholder?: string;
 }
 
-export interface DecisionOption {
+export interface ScenarioNode {
   id: string;
-  text: string;
-  impact: DecisionImpact;
-  consequenceFlag: string;
-}
-
-export interface Phase {
   phaseNumber: number;
+  kind: NodeKind;
   title: string;
   timeframe: string;
   scenarioText: string;
   criteria: Criterion[];
   questions: ReflectionQuestion[];
-  decisionOptions: DecisionOption[];
+  passingRules: {
+    minScore: number;
+    requiredCriteriaIds: string[];
+  };
+  nextOnPass?: string;
+  nextOnPartial?: string;
+  nextOnFail?: string;
 }
 
 export interface Scenario {
@@ -44,34 +49,30 @@ export interface Scenario {
   title: string;
   slug: string;
   overview: string;
-  phases: Phase[];
+  nodes: ScenarioNode[];
 }
 
-export interface PhaseResponse {
-  phaseNumber: number;
-  selectedCriteriaIds: string[];
-  answers: Record<string, string>;
-  selectedDecisionId: string;
-  missedConsequences: string[];
-  impact: DecisionImpact;
-  consequenceFlags: string[];
+export interface NodeEvaluationResult {
   score: number;
+  matchedCriteriaIds: string[];
+  missingRequiredCriteriaIds: string[];
+  feedback: string;
+  decision: EvaluationDecision;
+}
+
+export interface NodeResponse {
+  nodeId: string;
+  phaseNumber: number;
+  answers: Record<string, string>;
+  combinedAnswer: string;
+  evaluation: NodeEvaluationResult;
+  nextNodeId?: string;
 }
 
 export interface SimulationSession {
   scenarioId: string;
-  currentPhase: number;
-  responses: Record<number, PhaseResponse>;
+  currentNodeId: string;
+  responses: Record<string, NodeResponse>;
   startedAt: string;
   updatedAt: string;
-}
-
-export interface SummaryResult {
-  totalScore: number;
-  readinessLabel: string;
-  strengths: string[];
-  gaps: string[];
-  consequenceFlags: string[];
-  missedConsequences: string[];
-  coveredThemes: ThemeCategory[];
 }
