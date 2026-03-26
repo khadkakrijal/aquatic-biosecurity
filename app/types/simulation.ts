@@ -7,7 +7,7 @@ export type ThemeCategory =
   | "Expectations";
 
 export type EvaluationDecision = "pass" | "partial" | "fail";
-export type NodeKind = "main" | "remedial" | "failure";
+export type ScenarioSeverity = "stable" | "elevated" | "severe";
 
 export interface Criterion {
   id: string;
@@ -26,22 +26,18 @@ export interface ReflectionQuestion {
   placeholder?: string;
 }
 
-export interface ScenarioNode {
+export interface ScenarioStage {
   id: string;
   phaseNumber: number;
-  kind: NodeKind;
   title: string;
   timeframe: string;
-  scenarioText: string;
+  baseScenarioText: string;
   criteria: Criterion[];
   questions: ReflectionQuestion[];
   passingRules: {
     minScore: number;
     requiredCriteriaIds: string[];
   };
-  nextOnPass?: string;
-  nextOnPartial?: string;
-  nextOnFail?: string;
 }
 
 export interface Scenario {
@@ -49,30 +45,32 @@ export interface Scenario {
   title: string;
   slug: string;
   overview: string;
-  nodes: ScenarioNode[];
+  stages: ScenarioStage[];
 }
 
-export interface NodeEvaluationResult {
+export interface StageEvaluationResult {
   score: number;
   matchedCriteriaIds: string[];
   missingRequiredCriteriaIds: string[];
   feedback: string;
   decision: EvaluationDecision;
+  scenarioSeverity: ScenarioSeverity;
+  nextScenarioText?: string;
 }
 
-export interface NodeResponse {
-  nodeId: string;
+export interface StageResponse {
+  stageId: string;
   phaseNumber: number;
   answers: Record<string, string>;
   combinedAnswer: string;
-  evaluation: NodeEvaluationResult;
-  nextNodeId?: string;
+  scenarioTextShown: string;
+  evaluation: StageEvaluationResult;
 }
 
 export interface SimulationSession {
   scenarioId: string;
-  currentNodeId: string;
-  responses: Record<string, NodeResponse>;
+  currentStageNumber: number;
+  responses: Record<number, StageResponse>;
   startedAt: string;
   updatedAt: string;
 }

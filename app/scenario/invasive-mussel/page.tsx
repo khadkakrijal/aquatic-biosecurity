@@ -66,7 +66,7 @@ export default function ScenarioOverviewPage() {
             size="lg"
             className="rounded-2xl bg-gradient-to-r from-cyan-600 to-blue-600 px-8 py-6 text-white shadow-md hover:from-cyan-700 hover:to-blue-700"
           >
-            <Link href="/simulation/demo/node/p1-main">Begin Simulation</Link>
+            <Link href="/simulation/demo/stage/1">Begin Simulation</Link>
           </Button>
 
           <Button
