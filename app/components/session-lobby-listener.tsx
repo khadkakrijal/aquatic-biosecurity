@@ -30,6 +30,13 @@ export default function SessionLobbyListener({
       return;
     }
 
+    if (initialStatus === "ended") {
+      localStorage.removeItem("active-simulation-meeting");
+      window.dispatchEvent(new Event("active-simulation-meeting-changed"));
+      router.replace("/scenario/invasive-mussel");
+      return;
+    }
+
     const interval = setInterval(async () => {
       try {
         const { data, error } = await supabase
@@ -45,6 +52,14 @@ export default function SessionLobbyListener({
             `/simulation/demo/stage/${data.current_stage_number ?? 1}?session=${data.session_code ?? sessionCode}`
           );
           clearInterval(interval);
+          return;
+        }
+
+        if (data.status === "ended") {
+          localStorage.removeItem("active-simulation-meeting");
+          window.dispatchEvent(new Event("active-simulation-meeting-changed"));
+          clearInterval(interval);
+          router.replace("/scenario/invasive-mussel");
         }
       } catch (err) {
         console.error("Lobby polling error:", err);

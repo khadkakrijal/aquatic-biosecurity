@@ -6,42 +6,43 @@ import { createClient } from "@/utils/supabase/client";
 
 interface SessionStatusWatcherProps {
   sessionCode: string;
-  currentStatus: string;
 }
 
 export default function SessionStatusWatcher({
   sessionCode,
-  currentStatus,
 }: SessionStatusWatcherProps) {
   const router = useRouter();
 
   useEffect(() => {
-    if (currentStatus === "active") {
-      router.push(`/simulation/demo/stage/1?session=${sessionCode}`);
-      return;
-    }
-
+    let mounted = true;
     const supabase = createClient();
 
     const interval = setInterval(async () => {
-      const { data, error } = await supabase
-        .from("simulation_sessions")
-        .select("status,current_stage_number,session_code")
-        .eq("session_code", sessionCode)
-        .single();
+      try {
+        const { data, error } = await supabase
+          .from("simulation_sessions")
+          .select("status")
+          .eq("session_code", sessionCode.toUpperCase())
+          .single();
 
-      if (error || !data) return;
+        if (!mounted || error || !data) return;
 
-      if (data.status === "active") {
-        router.push(
-          `/simulation/demo/stage/${data.current_stage_number}?session=${data.session_code}`
-        );
-        router.refresh();
+        if (data.status === "ended") {
+          localStorage.removeItem("active-simulation-meeting");
+          window.dispatchEvent(new Event("active-simulation-meeting-changed"));
+          clearInterval(interval);
+          router.replace("/scenario/invasive-mussel");
+        }
+      } catch (err) {
+        console.error("Session watcher error:", err);
       }
     }, 2000);
 
-    return () => clearInterval(interval);
-  }, [currentStatus, router, sessionCode]);
+    return () => {
+      mounted = false;
+      clearInterval(interval);
+    };
+  }, [router, sessionCode]);
 
   return null;
 }
