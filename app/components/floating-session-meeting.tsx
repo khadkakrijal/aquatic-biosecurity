@@ -24,6 +24,7 @@ export default function FloatingSessionMeeting() {
 
     const syncMeeting = () => {
       const raw = localStorage.getItem("active-simulation-meeting");
+
       if (!raw) {
         setMeeting(null);
         return;
@@ -31,9 +32,9 @@ export default function FloatingSessionMeeting() {
 
       try {
         const parsed = JSON.parse(raw);
+
         if (parsed?.roomName && parsed?.sessionCode && parsed?.userName) {
           setMeeting(parsed);
-          setHidden(false);
         } else {
           setMeeting(null);
         }
@@ -56,10 +57,14 @@ export default function FloatingSessionMeeting() {
     };
   }, [mounted]);
 
-  if (!mounted || !meeting || hidden) return null;
+  if (!mounted || !meeting) return null;
 
   return (
-    <div className="fixed bottom-4 right-4 z-50 w-[360px] rounded-2xl border bg-white shadow-2xl">
+    <div
+      className={`fixed bottom-4 right-4 z-50 rounded-2xl border bg-white shadow-2xl transition-all duration-200 ${
+        hidden ? "w-auto" : "w-[360px]"
+      }`}
+    >
       <div className="flex items-center justify-between border-b px-4 py-3">
         <div>
           <p className="text-sm font-semibold text-slate-900">Meeting Room</p>
@@ -70,7 +75,10 @@ export default function FloatingSessionMeeting() {
         <div className="flex gap-2">
           <button
             type="button"
-            onClick={() => setMinimized((prev) => !prev)}
+            onClick={() => {
+              setHidden(false);
+              setMinimized((prev) => !prev);
+            }}
             className="rounded-lg border px-2 py-1 text-xs text-slate-700"
           >
             {minimized ? "Expand" : "Minimize"}
@@ -78,23 +86,28 @@ export default function FloatingSessionMeeting() {
 
           <button
             type="button"
-            onClick={() => setHidden(true)}
+            onClick={() => {
+              setHidden((prev) => !prev);
+              setMinimized(false);
+            }}
             className="rounded-lg border px-2 py-1 text-xs text-slate-700"
           >
-            Hide
+            {hidden ? "Show" : "Hide"}
           </button>
         </div>
       </div>
 
-      {!minimized && (
-        <div className="p-3">
-          <JitsiMeeting
-            roomName={meeting.roomName}
-            userName={meeting.userName}
-            height={260}
-          />
-        </div>
-      )}
+      <div
+        className={`overflow-hidden transition-all duration-200 ${
+          hidden || minimized ? "max-h-0 p-0 opacity-0" : "max-h-[400px] p-3 opacity-100"
+        }`}
+      >
+        <JitsiMeeting
+          roomName={meeting.roomName}
+          userName={meeting.userName}
+          height={260}
+        />
+      </div>
     </div>
   );
 }
