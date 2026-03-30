@@ -13,24 +13,38 @@ function generateSessionCode(length = 6) {
 }
 
 export async function POST(request: Request) {
+  console.log("🚀 create-session: route hit");
+
   const supabase = await createClient();
 
+  // ---------------- USER CHECK ----------------
   const {
     data: { user },
     error: userError,
   } = await supabase.auth.getUser();
 
+  console.log("👤 user check:", {
+    userId: user?.id,
+    email: user?.email,
+    error: userError?.message,
+  });
+
   if (userError || !user) {
+    console.error("❌ No authenticated user");
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
+  // ---------------- FORM DATA ----------------
   const formData = await request.formData();
   const title = String(
     formData.get("title") || "Aquatic Biosecurity Demo Session"
   ).trim();
   const hostName = String(formData.get("hostName") || "").trim();
 
+  console.log("📝 form data:", { title, hostName });
+
   const sessionCode = generateSessionCode();
+  console.log("🔑 generated session code:", sessionCode);
 
   const displayName =
     hostName ||
@@ -40,7 +54,9 @@ export async function POST(request: Request) {
     "Host";
 
   const dailyRoomName = `sim-${sessionCode.toLowerCase()}`;
+  console.log("📡 creating Daily room:", dailyRoomName);
 
+  // ---------------- DAILY API ----------------
   const dailyRes = await fetch("https://api.daily.co/v1/rooms", {
     method: "POST",
     headers: {
@@ -61,7 +77,14 @@ export async function POST(request: Request) {
 
   const dailyData = await dailyRes.json();
 
+  console.log("📡 Daily response:", {
+    ok: dailyRes.ok,
+    status: dailyRes.status,
+    data: dailyData,
+  });
+
   if (!dailyRes.ok) {
+    console.error("❌ Daily room creation failed:", dailyData);
     return NextResponse.redirect(
       new URL(
         `/simulation/session/create?error=${encodeURIComponent(
@@ -72,6 +95,7 @@ export async function POST(request: Request) {
     );
   }
 
+  // ---------------- CREATE SESSION ----------------
   const { data: session, error: sessionError } = await supabase
     .from("simulation_sessions")
     .insert({
@@ -89,7 +113,13 @@ export async function POST(request: Request) {
     .select()
     .single();
 
+  console.log("📦 session insert:", {
+    session,
+    error: sessionError?.message,
+  });
+
   if (sessionError || !session) {
+    console.error("❌ session creation failed:", sessionError);
     return NextResponse.redirect(
       new URL(
         `/simulation/session/create?error=${encodeURIComponent(
@@ -100,6 +130,7 @@ export async function POST(request: Request) {
     );
   }
 
+  // ---------------- ADD PARTICIPANT ----------------
   const { error: participantError } = await supabase
     .from("session_participants")
     .insert({
@@ -111,7 +142,12 @@ export async function POST(request: Request) {
       is_active: true,
     });
 
+  console.log("👥 participant insert:", {
+    error: participantError?.message,
+  });
+
   if (participantError) {
+    console.error("❌ participant insert failed:", participantError);
     return NextResponse.redirect(
       new URL(
         `/simulation/session/create?error=${encodeURIComponent(
@@ -121,6 +157,8 @@ export async function POST(request: Request) {
       )
     );
   }
+
+  console.log("✅ SUCCESS: redirecting to lobby", session.session_code);
 
   return NextResponse.redirect(
     new URL(`/simulation/session/${session.session_code}/lobby`, request.url)
