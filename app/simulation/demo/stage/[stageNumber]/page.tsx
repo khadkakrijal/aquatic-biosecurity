@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { invasiveMusselScenario } from "@/app/data/invasive-mussel-scenario";
 import { getStoredSession, saveStoredSession } from "@/app/lib/session-storage";
 import { Badge } from "@/components/ui/badge";
@@ -13,10 +13,15 @@ type DecisionType = "pass" | "partial" | "fail";
 export default function StagePage() {
   const params = useParams<{ stageNumber: string }>();
   const router = useRouter();
+  const searchParams = useSearchParams();
+
+  const sessionCode = searchParams.get("session");
 
   const stageNumber = Number(params.stageNumber);
   const stage = invasiveMusselScenario.stages.find(
-    (s) => s.phaseNumber === stageNumber || (stageNumber === 7 && s.id === "complete")
+    (s) =>
+      s.phaseNumber === stageNumber ||
+      (stageNumber === 7 && s.id === "complete"),
   );
 
   const [answers, setAnswers] = useState<Record<string, string>>({});
@@ -39,11 +44,15 @@ export default function StagePage() {
       setFeedback(existing.evaluation?.feedback || "");
       setDecision(existing.evaluation?.decision || null);
       setNextScenarioText(existing.evaluation?.nextScenarioText || "");
-      setScenarioTextShown(existing.scenarioTextShown || stage.baseScenarioText);
+      setScenarioTextShown(
+        existing.scenarioTextShown || stage.baseScenarioText,
+      );
       setHasSubmitted(Boolean(existing.evaluation));
     } else {
       const previous = session.responses?.[stage.phaseNumber - 1];
-      setScenarioTextShown(previous?.evaluation?.nextScenarioText || stage.baseScenarioText);
+      setScenarioTextShown(
+        previous?.evaluation?.nextScenarioText || stage.baseScenarioText,
+      );
       setAnswers({});
       setFeedback("");
       setDecision(null);
@@ -75,17 +84,24 @@ export default function StagePage() {
 
       const session = getStoredSession();
       const previousDecision =
-        session.responses?.[stage.phaseNumber - 1]?.evaluation?.decision || "none";
+        session.responses?.[stage.phaseNumber - 1]?.evaluation?.decision ||
+        "none";
 
       const res = await fetch("/api/evaluate-stage", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ stage, userAnswer: combinedAnswer, previousOutcome: previousDecision }),
+        body: JSON.stringify({
+          stage,
+          userAnswer: combinedAnswer,
+          previousOutcome: previousDecision,
+        }),
       });
 
       const result = await res.json();
 
-      if (!res.ok) throw new Error(result?.error || "Failed to evaluate response.");
+      if (!res.ok) {
+        throw new Error(result?.error || "Failed to evaluate response.");
+      }
 
       setFeedback(result.feedback || "");
       setDecision(result.decision || null);
@@ -129,7 +145,11 @@ export default function StagePage() {
     if (!stage) return;
 
     if (isCompletionStage) {
-      router.push("/simulation/demo/summary");
+      const summaryUrl = sessionCode
+        ? `/simulation/demo/summary?session=${sessionCode}`
+        : "/simulation/demo/summary";
+
+      router.push(summaryUrl);
       return;
     }
 
@@ -141,11 +161,16 @@ export default function StagePage() {
       currentStageNumber: nextStageNumber,
     });
 
-    if (nextStageNumber <= 6) {
-      router.push(`/simulation/demo/stage/${nextStageNumber}`);
-    } else {
-      router.push("/simulation/demo/stage/7");
-    }
+    const nextUrl =
+      nextStageNumber <= 6
+        ? sessionCode
+          ? `/simulation/demo/stage/${nextStageNumber}?session=${sessionCode}`
+          : `/simulation/demo/stage/${nextStageNumber}`
+        : sessionCode
+          ? `/simulation/demo/stage/7?session=${sessionCode}`
+          : "/simulation/demo/stage/7";
+
+    router.push(nextUrl);
   };
 
   if (!stage) {
@@ -159,21 +184,38 @@ export default function StagePage() {
           <div className="mb-3 flex flex-wrap gap-2">
             <Badge className="bg-cyan-600 text-white">Simulation</Badge>
             <Badge variant="outline">
-              {isCompletionStage ? "Final Reflection" : `Phase ${stage.phaseNumber}`}
+              {isCompletionStage
+                ? "Final Reflection"
+                : `Phase ${stage.phaseNumber}`}
             </Badge>
-            <Badge className="bg-slate-100 text-slate-700">{stage.timeframe}</Badge>
+            <Badge className="bg-slate-100 text-slate-700">
+              {stage.timeframe}
+            </Badge>
+            {sessionCode && (
+              <Badge className="bg-indigo-100 text-indigo-700">
+                Session: {sessionCode}
+              </Badge>
+            )}
           </div>
-          <h1 className="text-3xl font-semibold text-slate-900">{stage.title}</h1>
+
+          <h1 className="text-3xl font-semibold text-slate-900">
+            {stage.title}
+          </h1>
         </div>
 
         <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
           <Card className="rounded-3xl">
             <CardHeader>
-              <CardTitle>{isCompletionStage ? "Final Reflection" : "Situation"}</CardTitle>
+              <CardTitle>
+                {isCompletionStage ? "Final Reflection" : "Situation"}
+              </CardTitle>
             </CardHeader>
+
             <CardContent className="space-y-6">
               <div className="rounded-2xl border bg-slate-50/70 p-5">
-                <p className="text-sm leading-7 text-slate-700">{scenarioTextShown}</p>
+                <p className="text-sm leading-7 text-slate-700">
+                  {scenarioTextShown}
+                </p>
               </div>
 
               {stage.questions.map((q, index) => (
@@ -185,7 +227,10 @@ export default function StagePage() {
                   <textarea
                     value={answers[q.id] || ""}
                     onChange={(e) =>
-                      setAnswers((prev) => ({ ...prev, [q.id]: e.target.value }))
+                      setAnswers((prev) => ({
+                        ...prev,
+                        [q.id]: e.target.value,
+                      }))
                     }
                     rows={8}
                     className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none focus:border-cyan-500 focus:ring-2 focus:ring-cyan-200"
@@ -203,28 +248,36 @@ export default function StagePage() {
 
               {feedback && (
                 <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-4">
-                  <h3 className="mb-2 font-semibold text-emerald-800">Feedback</h3>
+                  <h3 className="mb-2 font-semibold text-emerald-800">
+                    Feedback
+                  </h3>
                   <p className="whitespace-pre-line text-sm leading-7 text-emerald-700">
                     {feedback}
                   </p>
+
                   {decision && (
                     <div className="mt-3">
-                      <Badge className="capitalize">
-                        Result: {decision}
-                      </Badge>
+                      <Badge className="capitalize">Result: {decision}</Badge>
                     </div>
                   )}
                 </div>
               )}
 
               <div className="flex flex-wrap gap-3">
-                <Button variant="outline" onClick={() => router.push("/scenario/invasive-mussel")}>
+                <Button
+                  variant="outline"
+                  onClick={() => router.push("/scenario/invasive-mussel")}
+                >
                   Back to Scenario
                 </Button>
 
                 {!hasSubmitted ? (
                   <Button onClick={handleSubmit} disabled={isSubmitting}>
-                    {isSubmitting ? "Evaluating..." : isCompletionStage ? "Submit Final Reflection" : "Submit Response"}
+                    {isSubmitting
+                      ? "Evaluating..."
+                      : isCompletionStage
+                        ? "Submit Final Reflection"
+                        : "Submit Response"}
                   </Button>
                 ) : (
                   <Button onClick={handleNextStage}>
@@ -241,11 +294,39 @@ export default function StagePage() {
                 <CardTitle>How this works</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3 text-sm text-slate-600">
-                <p>Your answer is evaluated against hidden key operational criteria.</p>
-                <p>The next stage always continues, but the scenario may become more stable, more pressured, or more severe depending on your response.</p>
-                <p>Feedback is shown after each answer so you understand how your response affected the simulation.</p>
+                <p>
+                  Your answer is evaluated against hidden key operational
+                  criteria.
+                </p>
+                <p>
+                  The next stage always continues, but the scenario may become
+                  more stable, more pressured, or more severe depending on your
+                  response.
+                </p>
+                <p>
+                  Feedback is shown after each answer so you understand how your
+                  response affected the simulation.
+                </p>
+                <p>
+                   The meeting stays available in the g window while the
+                  simulation continues.
+                </p>
               </CardContent>
             </Card>
+
+            {sessionCode && (
+              <Card className="rounded-3xl">
+                <CardHeader>
+                  <CardTitle>Session Info</CardTitle>
+                </CardHeader>
+                <CardContent className="text-sm text-slate-600">
+                  <p>
+                    You are participating in shared session{" "}
+                    <strong>{sessionCode}</strong>.
+                  </p>
+                </CardContent>
+              </Card>
+            )}
           </div>
         </div>
       </div>
