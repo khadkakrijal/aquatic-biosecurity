@@ -29,6 +29,7 @@ export default function EndSessionButton({
 
       localStorage.removeItem("active-simulation-meeting");
       window.dispatchEvent(new Event("active-simulation-meeting-changed"));
+      window.dispatchEvent(new Event("force-close-simulation-meeting"));
 
       router.push("/scenario/invasive-mussel");
     } catch (error) {

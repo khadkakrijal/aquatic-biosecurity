@@ -33,6 +33,12 @@ export default function JitsiMeeting({
   useEffect(() => {
     let cancelled = false;
 
+    const closeMeetingBox = () => {
+      localStorage.removeItem("active-simulation-meeting");
+      window.dispatchEvent(new Event("active-simulation-meeting-changed"));
+      window.dispatchEvent(new Event("force-close-simulation-meeting"));
+    };
+
     const getStore = () => {
       if (!window.__simulationJitsi) {
         const parkingNode = document.createElement("div");
@@ -67,6 +73,16 @@ export default function JitsiMeeting({
         containerRef.current.innerHTML = "";
         containerRef.current.appendChild(store.hostNode);
       }
+    };
+
+    const bindMeetingEvents = (api: any) => {
+      api.addListener("videoConferenceLeft", () => {
+        closeMeetingBox();
+      });
+
+      api.addListener("readyToClose", () => {
+        closeMeetingBox();
+      });
     };
 
     const createMeeting = () => {
@@ -111,6 +127,8 @@ export default function JitsiMeeting({
             TILE_VIEW_MAX_COLUMNS: 3,
           },
         });
+
+        bindMeetingEvents(store.api);
       }
 
       onReady?.();
@@ -138,9 +156,6 @@ export default function JitsiMeeting({
       const store = window.__simulationJitsi;
       if (!store?.hostNode || !store?.parkingNode) return;
 
-      // Do NOT dispose here.
-      // Just move the existing iframe to a hidden parking node
-      // so route changes do not force a new join.
       if (store.hostNode.parentElement !== store.parkingNode) {
         store.parkingNode.appendChild(store.hostNode);
       }

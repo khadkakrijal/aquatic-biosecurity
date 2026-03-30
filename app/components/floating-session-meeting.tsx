@@ -27,6 +27,8 @@ export default function FloatingSessionMeeting() {
 
       if (!raw) {
         setMeeting(null);
+        setMinimized(false);
+        setHidden(false);
         return;
       }
 
@@ -43,10 +45,18 @@ export default function FloatingSessionMeeting() {
       }
     };
 
+    const forceCloseMeeting = () => {
+      localStorage.removeItem("active-simulation-meeting");
+      setMeeting(null);
+      setMinimized(false);
+      setHidden(false);
+    };
+
     syncMeeting();
 
     window.addEventListener("storage", syncMeeting);
     window.addEventListener("active-simulation-meeting-changed", syncMeeting);
+    window.addEventListener("force-close-simulation-meeting", forceCloseMeeting);
 
     return () => {
       window.removeEventListener("storage", syncMeeting);
@@ -54,17 +64,17 @@ export default function FloatingSessionMeeting() {
         "active-simulation-meeting-changed",
         syncMeeting
       );
+      window.removeEventListener(
+        "force-close-simulation-meeting",
+        forceCloseMeeting
+      );
     };
   }, [mounted]);
 
   if (!mounted || !meeting) return null;
 
   return (
-    <div
-      className={`fixed bottom-4 right-4 z-50 rounded-2xl border bg-white shadow-2xl transition-all duration-200 ${
-        hidden ? "w-auto" : "w-[360px]"
-      }`}
-    >
+    <div className="fixed bottom-4 right-4 z-50 w-[360px] rounded-2xl border bg-white shadow-2xl">
       <div className="flex items-center justify-between border-b px-4 py-3">
         <div>
           <p className="text-sm font-semibold text-slate-900">Meeting Room</p>
@@ -99,7 +109,9 @@ export default function FloatingSessionMeeting() {
 
       <div
         className={`overflow-hidden transition-all duration-200 ${
-          hidden || minimized ? "max-h-0 p-0 opacity-0" : "max-h-[400px] p-3 opacity-100"
+          hidden || minimized
+            ? "max-h-0 p-0 opacity-0"
+            : "max-h-[400px] p-3 opacity-100"
         }`}
       >
         <JitsiMeeting
