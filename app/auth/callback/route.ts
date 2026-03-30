@@ -14,8 +14,10 @@ export async function GET(request: Request) {
       return NextResponse.redirect(new URL(next, requestUrl.origin));
     }
 
-    console.error("exchangeCodeForSession error:", error);
+    console.error("exchangeCodeForSession error:", error.message);
   }
 
-  return NextResponse.redirect(new URL("/login?error=authentication-error", requestUrl.origin));
+  return NextResponse.redirect(
+    new URL("/login?error=authentication-error", requestUrl.origin)
+  );
 }
