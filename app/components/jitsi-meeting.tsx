@@ -19,7 +19,7 @@ interface JitsiMeetingProps {
 export default function JitsiMeeting({
   roomName,
   userName,
-  height = 280,
+  height = 380,
   onReady,
   isHost = false,
 }: JitsiMeetingProps) {
@@ -48,9 +48,11 @@ export default function JitsiMeeting({
 
         if (existing) {
           existing.addEventListener("load", () => resolve(), { once: true });
-          existing.addEventListener("error", () => reject(new Error("Failed to load Jitsi script")), {
-            once: true,
-          });
+          existing.addEventListener(
+            "error",
+            () => reject(new Error("Failed to load Jitsi script")),
+            { once: true }
+          );
           return;
         }
 
@@ -118,10 +120,6 @@ export default function JitsiMeeting({
 
         api.addListener("videoConferenceJoined", () => {
           onReady?.();
-
-          // Browsers generally require user permission / gesture for screen share.
-          // We can prompt host by opening the control in Jitsi toolbar,
-          // but cannot silently force share without permission.
         });
 
         apiRef.current = api;

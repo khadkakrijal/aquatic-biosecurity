@@ -75,7 +75,7 @@ export default function FloatingSessionMeeting() {
   if (!mounted || !meeting) return null;
 
   return (
-    <div className="fixed bottom-4 right-4 z-50 w-[360px] rounded-2xl border bg-white shadow-2xl">
+    <div className="fixed bottom-4 right-4 z-50 w-[92vw] max-w-[520px] rounded-2xl border bg-white shadow-2xl">
       <div className="flex items-center justify-between border-b px-4 py-3">
         <div>
           <p className="text-sm font-semibold text-slate-900">Meeting Room</p>
@@ -115,13 +115,13 @@ export default function FloatingSessionMeeting() {
         className={`overflow-hidden transition-all duration-200 ${
           hidden || minimized
             ? "max-h-0 p-0 opacity-0"
-            : "max-h-[420px] p-3 opacity-100"
+            : "max-h-[560px] p-3 opacity-100"
         }`}
       >
         <JitsiMeeting
           roomName={meeting.roomName}
           userName={meeting.userName}
-          height={280}
+          height={380}
           isHost={Boolean(meeting.isHost)}
         />
       </div>

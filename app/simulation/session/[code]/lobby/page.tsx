@@ -1,5 +1,6 @@
 import SessionLobbyListener from "@/app/components/session-lobby-listener";
 import SessionMeetingBootstrap from "@/app/components/session-meeting-bootstrap";
+import SessionInviteCard from "@/app/components/session-invite-card";
 import StartSimulationButton from "@/app/components/start-simulation-button";
 import { createClient } from "@/utils/supabase/server";
 import { redirect } from "next/navigation";
@@ -93,6 +94,12 @@ export default async function SessionLobbyPage({
               </p>
             </div>
 
+            {isHost && (
+              <div className="mt-6">
+                <SessionInviteCard sessionCode={session.session_code} />
+              </div>
+            )}
+
             <div className="mt-6">
               <h2 className="text-lg font-semibold text-slate-900">
                 Participants
@@ -148,8 +155,8 @@ export default async function SessionLobbyPage({
             <div className="space-y-4 rounded-2xl border bg-slate-50 p-5">
               <p className="text-sm leading-7 text-slate-700">
                 {isHost
-                  ? "Join the meeting below. After starting the simulation, please use the share screen option inside the meeting so participants can follow your screen."
-                  : "You are in viewer mode. Stay in the meeting and watch the host walkthrough."}
+                  ? "Share the invite link with participants. They can log in and join the session directly. After starting the simulation, use Share Screen inside the meeting so participants can follow along."
+                  : "You joined from the invite/session link. Stay in the meeting and watch the host walkthrough."}
               </p>
 
               <div className="rounded-2xl bg-white p-4 text-sm text-slate-600">
