@@ -11,8 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
-type DecisionType = "pass" | "partial" | "fail";
-type SeverityType = "stable" | "elevated" | "severe";
+type SeverityType = "manageable" | "elevated" | "severe";
 
 interface StageResponse {
   stageId: string;
@@ -20,20 +19,22 @@ interface StageResponse {
   answers: Record<string, string>;
   combinedAnswer: string;
   scenarioTextShown: string;
+  submittedAt?: string;
   evaluation?: {
-    score: number;
-    matchedCriteriaIds: string[];
-    missingRequiredCriteriaIds: string[];
     feedback: string;
-    decision: DecisionType;
     scenarioSeverity: SeverityType;
     nextScenarioText?: string;
+    nextStageId?: string;
+    branchReason?: string;
+    strengths?: string[];
+    missedThemes?: string[];
+    missedCriteriaTexts?: string[];
   };
 }
 
 export default function SummaryPage() {
   const router = useRouter();
-  const [responses, setResponses] = useState<Record<number, StageResponse>>({});
+  const [responses, setResponses] = useState<Record<string, StageResponse>>({});
   const [aiFeedback, setAiFeedback] = useState("");
   const [loading, setLoading] = useState(true);
   const [summaryLoading, setSummaryLoading] = useState(false);
@@ -46,9 +47,12 @@ export default function SummaryPage() {
   }, []);
 
   const orderedResponses = useMemo(() => {
-    return Object.values(responses).sort(
-      (a, b) => a.phaseNumber - b.phaseNumber,
-    );
+    return Object.values(responses).sort((a, b) => {
+      if (a.phaseNumber !== b.phaseNumber) {
+        return a.phaseNumber - b.phaseNumber;
+      }
+      return (a.submittedAt || "").localeCompare(b.submittedAt || "");
+    });
   }, [responses]);
 
   const stageResponses = useMemo(() => {
@@ -63,36 +67,45 @@ export default function SummaryPage() {
     );
   }, [orderedResponses]);
 
-  const summaryStats = useMemo(() => {
-    const passCount = stageResponses.filter(
-      (item) => item.evaluation?.decision === "pass",
-    ).length;
-
-    const partialCount = stageResponses.filter(
-      (item) => item.evaluation?.decision === "partial",
-    ).length;
-
-    const failCount = stageResponses.filter(
-      (item) => item.evaluation?.decision === "fail",
-    ).length;
-
-    const totalScore = stageResponses.reduce(
-      (sum, item) => sum + (item.evaluation?.score || 0),
-      0,
+  const overallSeverity = useMemo<SeverityType>(() => {
+    const severities = stageResponses.map(
+      (item) => item.evaluation?.scenarioSeverity,
     );
 
-    const averageScore =
-      stageResponses.length > 0
-        ? Math.round(totalScore / stageResponses.length)
-        : 0;
+    if (severities.includes("severe")) return "severe";
+    if (severities.includes("elevated")) return "elevated";
+    return "manageable";
+  }, [stageResponses]);
 
-    return {
-      passCount,
-      partialCount,
-      failCount,
-      totalScore,
-      averageScore,
-    };
+  const repeatedGaps = useMemo(() => {
+    const gapMap = new Map<string, number>();
+
+    stageResponses.forEach((response) => {
+      const gaps = response.evaluation?.missedCriteriaTexts || [];
+      gaps.forEach((gap) => {
+        const key = gap.trim();
+        if (!key) return;
+        gapMap.set(key, (gapMap.get(key) || 0) + 1);
+      });
+    });
+
+    return Array.from(gapMap.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 8)
+      .map(([text, count]) => ({ text, count }));
+  }, [stageResponses]);
+
+  const visitedPath = useMemo(() => {
+    return stageResponses.map((response) => {
+      const stage = invasiveMusselScenario.stages.find(
+        (item) => item.id === response.stageId,
+      );
+      return {
+        stageId: response.stageId,
+        phaseNumber: response.phaseNumber,
+        title: stage?.title || response.stageId,
+      };
+    });
   }, [stageResponses]);
 
   useEffect(() => {
@@ -107,13 +120,29 @@ export default function SummaryPage() {
           scenarioTitle: invasiveMusselScenario.title,
           summary: {
             totalStages: stageResponses.length,
-            passCount: summaryStats.passCount,
-            partialCount: summaryStats.partialCount,
-            failCount: summaryStats.failCount,
-            totalScore: summaryStats.totalScore,
-            averageScore: summaryStats.averageScore,
+            overallSeverity,
+            repeatedGaps,
+            reflectionIncluded: Boolean(reflectionResponse),
+            visitedPath,
           },
-          responses: orderedResponses,
+          responses: orderedResponses.map((item) => ({
+            stageId: item.stageId,
+            phaseNumber: item.phaseNumber,
+            combinedAnswer: item.combinedAnswer,
+            scenarioTextShown: item.scenarioTextShown,
+            evaluation: item.evaluation
+              ? {
+                  feedback: item.evaluation.feedback,
+                  scenarioSeverity: item.evaluation.scenarioSeverity,
+                  nextScenarioText: item.evaluation.nextScenarioText,
+                  nextStageId: item.evaluation.nextStageId,
+                  branchReason: item.evaluation.branchReason,
+                  strengths: item.evaluation.strengths || [],
+                  missedThemes: item.evaluation.missedThemes || [],
+                  missedCriteriaTexts: item.evaluation.missedCriteriaTexts || [],
+                }
+              : undefined,
+          })),
         };
 
         const res = await fetch("/api/ai-summary", {
@@ -141,7 +170,15 @@ export default function SummaryPage() {
     };
 
     generateSummary();
-  }, [stageResponses, aiFeedback, orderedResponses, summaryStats]);
+  }, [
+    stageResponses,
+    aiFeedback,
+    orderedResponses,
+    overallSeverity,
+    repeatedGaps,
+    reflectionResponse,
+    visitedPath,
+  ]);
 
   const handleRestart = () => {
     resetStoredSession();
@@ -152,22 +189,9 @@ export default function SummaryPage() {
     router.push("/scenario/invasive-mussel");
   };
 
-  const getDecisionBadgeClass = (decision?: DecisionType) => {
-    switch (decision) {
-      case "pass":
-        return "bg-emerald-600 text-white";
-      case "partial":
-        return "bg-amber-500 text-white";
-      case "fail":
-        return "bg-red-600 text-white";
-      default:
-        return "bg-slate-200 text-slate-700";
-    }
-  };
-
   const getSeverityBadgeClass = (severity?: SeverityType) => {
     switch (severity) {
-      case "stable":
+      case "manageable":
         return "bg-cyan-600 text-white";
       case "elevated":
         return "bg-orange-500 text-white";
@@ -218,66 +242,24 @@ export default function SummaryPage() {
           <div className="mb-3 flex flex-wrap gap-2">
             <Badge className="bg-cyan-600 text-white">Simulation Summary</Badge>
             <Badge variant="outline">{invasiveMusselScenario.title}</Badge>
+            <Badge className={getSeverityBadgeClass(overallSeverity)}>
+              Overall incident severity: {overallSeverity}
+            </Badge>
           </div>
+
           <h1 className="text-3xl font-semibold text-slate-900">
             Final Exercise Summary
           </h1>
           <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
-            This summary combines your responses across the aquatic biosecurity
-            simulation and provides an overall preparedness view.
+            This summary focuses on the main capability gaps, operational
+            pressures, branch pathway, and learning points across the exercise.
           </p>
         </div>
 
-        <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
+        <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
           <Card className="rounded-3xl">
             <CardHeader>
-              <CardTitle className="text-base">Passed Phases</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-3xl font-semibold text-emerald-600">
-                {summaryStats.passCount}
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card className="rounded-3xl">
-            <CardHeader>
-              <CardTitle className="text-base">Partial Phases</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-3xl font-semibold text-amber-500">
-                {summaryStats.partialCount}
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card className="rounded-3xl">
-            <CardHeader>
-              <CardTitle className="text-base">Failed Phases</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-3xl font-semibold text-red-600">
-                {summaryStats.failCount}
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card className="rounded-3xl">
-            <CardHeader>
-              <CardTitle className="text-base">Average Score</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-3xl font-semibold text-slate-900">
-                {summaryStats.averageScore}
-              </p>
-            </CardContent>
-          </Card>
-        </div>
-
-        <div className="mt-6 grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
-          <Card className="rounded-3xl">
-            <CardHeader>
-              <CardTitle>AI Preparedness Summary</CardTitle>
+              <CardTitle>Preparedness Summary</CardTitle>
             </CardHeader>
             <CardContent>
               {summaryLoading ? (
@@ -290,7 +272,7 @@ export default function SummaryPage() {
                 </div>
               ) : (
                 <p className="text-sm text-slate-600">
-                  No final AI summary available.
+                  No final summary available.
                 </p>
               )}
 
@@ -306,17 +288,49 @@ export default function SummaryPage() {
             <CardHeader>
               <CardTitle>Exercise Overview</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-3 text-sm text-slate-600">
+            <CardContent className="space-y-5 text-sm text-slate-600">
               <p>
-                Total scored phases: <strong>{stageResponses.length}</strong>
-              </p>
-              <p>
-                Total score: <strong>{summaryStats.totalScore}</strong>
+                Completed phases: <strong>{stageResponses.length}</strong>
               </p>
               <p>
                 Final reflection included:{" "}
                 <strong>{reflectionResponse ? "Yes" : "No"}</strong>
               </p>
+
+              {visitedPath.length > 0 && (
+                <div>
+                  <h3 className="mb-2 font-semibold text-slate-900">
+                    Path through the exercise
+                  </h3>
+                  <ul className="space-y-2">
+                    {visitedPath.map((item, index) => (
+                      <li
+                        key={`${item.stageId}-${index}`}
+                        className="leading-6"
+                      >
+                        {index + 1}. Phase {item.phaseNumber} — {item.title}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {repeatedGaps.length > 0 && (
+                <div>
+                  <h3 className="mb-2 font-semibold text-slate-900">
+                    Repeated gaps noticed
+                  </h3>
+                  <ul className="space-y-2">
+                    {repeatedGaps.map((gap, index) => (
+                      <li key={`${gap.text}-${index}`} className="leading-6">
+                        - {gap.text}
+                        {gap.count > 1 ? ` (${gap.count} times)` : ""}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
               <div className="flex flex-wrap gap-3 pt-3">
                 <Button variant="outline" onClick={handleBackToScenario}>
                   Back to Scenario
@@ -345,25 +359,17 @@ export default function SummaryPage() {
         <div className="mt-6 space-y-6">
           {stageResponses.map((response) => {
             const stage = invasiveMusselScenario.stages.find(
-              (item) => item.phaseNumber === response.phaseNumber,
+              (item) => item.id === response.stageId,
             );
 
             return (
-              <Card key={response.phaseNumber} className="rounded-3xl">
+              <Card key={response.stageId} className="rounded-3xl">
                 <CardHeader>
                   <div className="flex flex-wrap items-center gap-2">
                     <CardTitle className="text-xl">
                       Phase {response.phaseNumber} –{" "}
                       {stage?.title || response.stageId}
                     </CardTitle>
-
-                    <Badge
-                      className={getDecisionBadgeClass(
-                        response.evaluation?.decision,
-                      )}
-                    >
-                      {response.evaluation?.decision || "not evaluated"}
-                    </Badge>
 
                     <Badge
                       className={getSeverityBadgeClass(
@@ -423,25 +429,6 @@ export default function SummaryPage() {
                       </div>
                     </div>
                   )}
-
-                  <div className="flex flex-wrap gap-3 text-sm text-slate-600">
-                    <span>
-                      Score: <strong>{response.evaluation?.score ?? 0}</strong>
-                    </span>
-                    <span>
-                      Matched criteria:{" "}
-                      <strong>
-                        {response.evaluation?.matchedCriteriaIds?.length ?? 0}
-                      </strong>
-                    </span>
-                    <span>
-                      Missing required:{" "}
-                      <strong>
-                        {response.evaluation?.missingRequiredCriteriaIds
-                          ?.length ?? 0}
-                      </strong>
-                    </span>
-                  </div>
                 </CardContent>
               </Card>
             );

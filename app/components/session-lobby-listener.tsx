@@ -9,6 +9,7 @@ interface SessionLobbyListenerProps {
   sessionCode: string;
   initialStatus: string;
   initialStageNumber: number;
+  isHost: boolean;
 }
 
 export default function SessionLobbyListener({
@@ -16,6 +17,7 @@ export default function SessionLobbyListener({
   sessionCode,
   initialStatus,
   initialStageNumber,
+  isHost,
 }: SessionLobbyListenerProps) {
   const router = useRouter();
 
@@ -24,9 +26,11 @@ export default function SessionLobbyListener({
     const supabase = createClient();
 
     if (initialStatus === "active") {
-      router.replace(
-        `/simulation/demo/stage/${initialStageNumber}?session=${sessionCode}`
-      );
+      if (isHost) {
+        router.replace(
+          `/simulation/demo/stage/${initialStageNumber}?session=${sessionCode}`
+        );
+      }
       return;
     }
 
@@ -48,10 +52,16 @@ export default function SessionLobbyListener({
         if (!isMounted || error || !data) return;
 
         if (data.status === "active") {
-          router.replace(
-            `/simulation/demo/stage/${data.current_stage_number ?? 1}?session=${data.session_code ?? sessionCode}`
-          );
           clearInterval(interval);
+
+          if (isHost) {
+            router.replace(
+              `/simulation/demo/stage/${data.current_stage_number ?? 1}?session=${
+                data.session_code ?? sessionCode
+              }`
+            );
+          }
+
           return;
         }
 
@@ -70,7 +80,7 @@ export default function SessionLobbyListener({
       isMounted = false;
       clearInterval(interval);
     };
-  }, [initialStageNumber, initialStatus, router, sessionCode, sessionId]);
+  }, [initialStageNumber, initialStatus, isHost, router, sessionCode, sessionId]);
 
   return null;
 }

@@ -9,6 +9,7 @@ declare global {
       api: any | null;
       roomName: string;
       userName: string;
+      isHost: boolean;
       hostNode: HTMLDivElement | null;
       parkingNode: HTMLDivElement | null;
     };
@@ -20,6 +21,7 @@ interface JitsiMeetingProps {
   userName: string;
   height?: number;
   onReady?: () => void;
+  isHost?: boolean;
 }
 
 export default function JitsiMeeting({
@@ -27,6 +29,7 @@ export default function JitsiMeeting({
   userName,
   height = 260,
   onReady,
+  isHost = false,
 }: JitsiMeetingProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
 
@@ -54,6 +57,7 @@ export default function JitsiMeeting({
           api: null,
           roomName: "",
           userName: "",
+          isHost: false,
           hostNode,
           parkingNode,
         };
@@ -93,19 +97,21 @@ export default function JitsiMeeting({
 
       const roomChanged = store.roomName !== roomName;
       const userChanged = store.userName !== userName;
+      const roleChanged = store.isHost !== isHost;
 
-      if (store.api && !roomChanged && !userChanged) {
+      if (store.api && !roomChanged && !userChanged && !roleChanged) {
         onReady?.();
         return;
       }
 
-      if (store.api && (roomChanged || userChanged)) {
+      if (store.api && (roomChanged || userChanged || roleChanged)) {
         store.api.dispose?.();
         store.api = null;
       }
 
       store.roomName = roomName;
       store.userName = userName;
+      store.isHost = isHost;
 
       if (!store.api && store.hostNode) {
         store.api = new window.JitsiMeetExternalAPI("meet.jit.si", {
@@ -119,12 +125,26 @@ export default function JitsiMeeting({
           configOverwrite: {
             prejoinPageEnabled: false,
             enableWelcomePage: false,
-            startWithAudioMuted: false,
-            startWithVideoMuted: false,
+            startWithAudioMuted: !isHost,
+            startWithVideoMuted: !isHost,
             disableDeepLinking: true,
           },
           interfaceConfigOverwrite: {
             TILE_VIEW_MAX_COLUMNS: 3,
+            TOOLBAR_BUTTONS: isHost
+              ? [
+                  "microphone",
+                  "camera",
+                  "desktop",
+                  "fullscreen",
+                  "hangup",
+                  "settings",
+                  "tileview",
+                ]
+              : [
+                  "hangup",
+                  "fullscreen",
+                ],
           },
         });
 
@@ -160,7 +180,12 @@ export default function JitsiMeeting({
         store.parkingNode.appendChild(store.hostNode);
       }
     };
-  }, [roomName, userName, height, onReady]);
+  }, [roomName, userName, height, onReady, isHost]);
 
-  return <div ref={containerRef} className="w-full overflow-hidden rounded-xl" />;
+  return (
+    <div
+      ref={containerRef}
+      className="w-full overflow-hidden rounded-xl"
+    />
+  );
 }

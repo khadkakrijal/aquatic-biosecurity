@@ -2,7 +2,6 @@ import SessionLobbyListener from "@/app/components/session-lobby-listener";
 import SessionMeetingBootstrap from "@/app/components/session-meeting-bootstrap";
 import StartSimulationButton from "@/app/components/start-simulation-button";
 import { createClient } from "@/utils/supabase/server";
-import Link from "next/link";
 import { redirect } from "next/navigation";
 
 interface LobbyPageProps {
@@ -22,6 +21,10 @@ export default async function SessionLobbyPage({
     data: { user },
   } = await supabase.auth.getUser();
 
+  if (!user) {
+    redirect("/login");
+  }
+
   const { data: session, error: sessionError } = await supabase
     .from("simulation_sessions")
     .select("*")
@@ -38,13 +41,18 @@ export default async function SessionLobbyPage({
     .eq("session_id", session.id)
     .order("joined_at", { ascending: true });
 
-  const isHost = !!user && session.host_user_id === user.id;
+  const isHost = session.host_user_id === user.id;
+
+  const currentParticipant = participants?.find(
+    (participant) => participant.user_id === user.id
+  );
 
   const displayName =
-    user?.user_metadata?.full_name ||
-    user?.user_metadata?.name ||
+    currentParticipant?.participant_name ||
+    user.user_metadata?.full_name ||
+    user.user_metadata?.name ||
     resolvedSearchParams.name ||
-    user?.email ||
+    user.email ||
     "Participant";
 
   return (
@@ -54,6 +62,7 @@ export default async function SessionLobbyPage({
         sessionCode={session.session_code}
         initialStatus={session.status}
         initialStageNumber={session.current_stage_number}
+        isHost={isHost}
       />
 
       <SessionMeetingBootstrap
@@ -65,7 +74,7 @@ export default async function SessionLobbyPage({
         <div className="grid gap-6 lg:grid-cols-[1fr_1.1fr]">
           <div className="rounded-3xl border bg-white p-6 shadow-sm">
             <h1 className="text-3xl font-semibold text-slate-900">
-              Session Lobby
+              {isHost ? "Session Control Room" : "Session Viewer Lobby"}
             </h1>
 
             <div className="mt-4 space-y-2 rounded-2xl bg-slate-100 p-4 text-sm text-slate-700">
@@ -115,15 +124,18 @@ export default async function SessionLobbyPage({
             </div>
 
             <div className="mt-6">
-              <div className="mt-6">
-                {isHost ? (
-                  <StartSimulationButton sessionCode={session.session_code} />
-                ) : (
-                  <p className="text-sm text-slate-600">
-                    Waiting for the host to start the simulation.
-                  </p>
-                )}
-              </div>
+              {isHost ? (
+                <StartSimulationButton sessionCode={session.session_code} />
+              ) : session.status === "active" ? (
+                <div className="rounded-2xl border border-cyan-200 bg-cyan-50 px-4 py-3 text-sm text-cyan-800">
+                  The host has started the simulation. Please stay in the meeting
+                  and watch the host screen share.
+                </div>
+              ) : (
+                <p className="text-sm text-slate-600">
+                  Waiting for the host to start the simulation.
+                </p>
+              )}
             </div>
           </div>
 
@@ -134,13 +146,9 @@ export default async function SessionLobbyPage({
 
             <div className="space-y-4 rounded-2xl border bg-slate-50 p-5">
               <p className="text-sm leading-7 text-slate-700">
-                This session uses one shared meeting room for the full
-                simulation.
-              </p>
-
-              <p className="text-sm leading-7 text-slate-600">
-                The floating meeting window should remain active from lobby
-                until the final stage.
+                {isHost
+                  ? "Start the simulation, then share your screen inside the meeting so all participants can follow along."
+                  : "You are in viewer mode. The host will run the simulation and share their screen in the meeting."}
               </p>
 
               <div className="rounded-2xl bg-white p-4 text-sm text-slate-600">

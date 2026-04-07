@@ -6,8 +6,22 @@ export type ThemeCategory =
   | "Communication"
   | "Expectations";
 
-export type EvaluationDecision = "pass" | "partial" | "fail";
-export type ScenarioSeverity = "stable" | "elevated" | "severe";
+export type EvaluationDecision = "strong" | "mixed" | "limited";
+export type ScenarioSeverity = "manageable" | "elevated" | "severe";
+
+export interface EvaluationRules {
+  minScore: number;
+  requiredCriteriaIds: string[];
+}
+
+export interface AdminMeta {
+  isPublished?: boolean;
+  version?: number;
+  createdAt?: string;
+  updatedAt?: string;
+  createdBy?: string;
+  updatedBy?: string;
+}
 
 export interface Criterion {
   id: string;
@@ -17,6 +31,7 @@ export interface Criterion {
   required?: boolean;
   weight?: number;
   keywords?: string[];
+  sortOrder?: number;
 }
 
 export interface ReflectionQuestion {
@@ -24,6 +39,16 @@ export interface ReflectionQuestion {
   text: string;
   theme: ThemeCategory;
   placeholder?: string;
+  sortOrder?: number;
+}
+
+export interface StageRoutingRules {
+  strong?: string;
+  mixed?: string;
+  limited?: string;
+  byMissingRequired?: Record<string, string>;
+    byMissingRequiredPriority?: string[];
+  fallback?: string;
 }
 
 export interface ScenarioStage {
@@ -34,10 +59,12 @@ export interface ScenarioStage {
   baseScenarioText: string;
   criteria: Criterion[];
   questions: ReflectionQuestion[];
-  passingRules: {
-    minScore: number;
-    requiredCriteriaIds: string[];
-  };
+  passingRules: EvaluationRules;
+  nextStageMap?: StageRoutingRules;
+  sortOrder?: number;
+  isActive?: boolean;
+  stageKey?: string;
+  adminMeta?: AdminMeta;
 }
 
 export interface Scenario {
@@ -46,6 +73,10 @@ export interface Scenario {
   slug: string;
   overview: string;
   stages: ScenarioStage[];
+  version?: number;
+  isActive?: boolean;
+  category?: string;
+  adminMeta?: AdminMeta;
 }
 
 export interface StageEvaluationResult {
@@ -56,6 +87,11 @@ export interface StageEvaluationResult {
   decision: EvaluationDecision;
   scenarioSeverity: ScenarioSeverity;
   nextScenarioText?: string;
+  nextStageId?: string;
+  branchReason?: string;
+  strengths?: string[];
+  missedThemes?: ThemeCategory[];
+  missedCriteriaTexts?: string[];
 }
 
 export interface StageResponse {
@@ -65,12 +101,16 @@ export interface StageResponse {
   combinedAnswer: string;
   scenarioTextShown: string;
   evaluation: StageEvaluationResult;
+  submittedAt?: string;
 }
 
 export interface SimulationSession {
   scenarioId: string;
-  currentStageNumber: number;
-  responses: Record<number, StageResponse>;
+  currentStageId: string;
+  responses: Record<string, StageResponse>;
   startedAt: string;
   updatedAt: string;
+  overallSeverity?: ScenarioSeverity;
+  completedAt?: string;
+  finalSummary?: string;
 }

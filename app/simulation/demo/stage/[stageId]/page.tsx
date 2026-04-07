@@ -1,69 +1,96 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import { invasiveMusselScenario } from "@/app/data/invasive-mussel-scenario";
+import {
+  getScenarioStageById,
+  invasiveMusselScenario,
+} from "@/app/data/invasive-mussel-scenario";
 import { getStoredSession, saveStoredSession } from "@/app/lib/session-storage";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
-type DecisionType = "pass" | "partial" | "fail";
+type DecisionType = "strong" | "mixed" | "limited";
+type SeverityType = "manageable" | "elevated" | "severe";
 
 export default function StagePage() {
-  const params = useParams<{ stageNumber: string }>();
+  const params = useParams<{ stageId: string }>();
   const router = useRouter();
   const searchParams = useSearchParams();
 
   const sessionCode = searchParams.get("session");
-
-  const stageNumber = Number(params.stageNumber);
-  const stage = invasiveMusselScenario.stages.find(
-    (s) =>
-      s.phaseNumber === stageNumber ||
-      (stageNumber === 7 && s.id === "complete"),
-  );
+  const stageId = params.stageId;
+  const stage = getScenarioStageById(stageId);
 
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [feedback, setFeedback] = useState("");
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [hasSubmitted, setHasSubmitted] = useState(false);
-  const [decision, setDecision] = useState<DecisionType | null>(null);
-  const [nextScenarioText, setNextScenarioText] = useState("");
+  const [, setDecision] = useState<DecisionType | null>(null);
+  const [, setNextScenarioText] = useState("");
   const [scenarioTextShown, setScenarioTextShown] = useState("");
+
+  const orderedResponses = useMemo(() => {
+    const session = getStoredSession();
+    return Object.values(session.responses || {}).sort((a, b) => {
+      if (a.phaseNumber !== b.phaseNumber) {
+        return a.phaseNumber - b.phaseNumber;
+      }
+      return (a.submittedAt || "").localeCompare(b.submittedAt || "");
+    });
+  }, [stageId]);
 
   useEffect(() => {
     if (!stage) return;
 
     const session = getStoredSession();
-    const existing = session.responses?.[stage.phaseNumber];
+    const existing = session.responses?.[stage.id];
 
     if (existing) {
       setAnswers(existing.answers || {});
       setFeedback(existing.evaluation?.feedback || "");
       setDecision(existing.evaluation?.decision || null);
       setNextScenarioText(existing.evaluation?.nextScenarioText || "");
-      setScenarioTextShown(
-        existing.scenarioTextShown || stage.baseScenarioText,
-      );
+      setScenarioTextShown(existing.scenarioTextShown || stage.baseScenarioText);
       setHasSubmitted(Boolean(existing.evaluation));
-    } else {
-      const previous = session.responses?.[stage.phaseNumber - 1];
-      setScenarioTextShown(
-        previous?.evaluation?.nextScenarioText || stage.baseScenarioText,
-      );
-      setAnswers({});
-      setFeedback("");
-      setDecision(null);
-      setNextScenarioText("");
-      setHasSubmitted(false);
+      setError("");
+      return;
     }
 
+    const previousLinkedResponse = orderedResponses.find(
+      (response) => response.evaluation?.nextStageId === stage.id,
+    );
+
+    setScenarioTextShown(
+      previousLinkedResponse?.evaluation?.nextScenarioText || stage.baseScenarioText,
+    );
+    setAnswers({});
+    setFeedback("");
+    setDecision(null);
+    setNextScenarioText("");
+    setHasSubmitted(false);
     setError("");
-  }, [stage]);
+  }, [stage, orderedResponses]);
 
   const isCompletionStage = stage?.id === "complete";
+
+  const mergeOverallSeverity = (
+    current?: SeverityType,
+    incoming?: SeverityType,
+  ): SeverityType => {
+    const rank: Record<SeverityType, number> = {
+      manageable: 1,
+      elevated: 2,
+      severe: 3,
+    };
+
+    const safeCurrent = current || "manageable";
+    const safeIncoming = incoming || "manageable";
+
+    return rank[safeIncoming] > rank[safeCurrent] ? safeIncoming : safeCurrent;
+  };
 
   const handleSubmit = async () => {
     if (!stage) return;
@@ -83,9 +110,8 @@ export default function StagePage() {
       setIsSubmitting(true);
 
       const session = getStoredSession();
-      const previousDecision =
-        session.responses?.[stage.phaseNumber - 1]?.evaluation?.decision ||
-        "none";
+      const previousResponse = orderedResponses[orderedResponses.length - 1];
+      const previousDecision = previousResponse?.evaluation?.decision || "none";
 
       const res = await fetch("/api/evaluate-stage", {
         method: "POST",
@@ -111,15 +137,20 @@ export default function StagePage() {
       const updatedSession = {
         ...session,
         scenarioId: session.scenarioId || invasiveMusselScenario.id,
-        currentStageNumber: stage.phaseNumber,
+        currentStageId: stage.id,
+        overallSeverity: mergeOverallSeverity(
+          session.overallSeverity,
+          result.scenarioSeverity,
+        ),
         responses: {
           ...(session.responses || {}),
-          [stage.phaseNumber]: {
+          [stage.id]: {
             stageId: stage.id,
             phaseNumber: stage.phaseNumber,
             answers,
             combinedAnswer,
             scenarioTextShown,
+            submittedAt: new Date().toISOString(),
             evaluation: {
               score: result.score,
               matchedCriteriaIds: result.matchedCriteriaIds,
@@ -128,6 +159,11 @@ export default function StagePage() {
               decision: result.decision,
               scenarioSeverity: result.scenarioSeverity,
               nextScenarioText: result.nextScenarioText,
+              nextStageId: result.nextStageId,
+              branchReason: result.branchReason,
+              strengths: result.strengths || [],
+              missedThemes: result.missedThemes || [],
+              missedCriteriaTexts: result.missedCriteriaTexts || [],
             },
           },
         },
@@ -153,22 +189,27 @@ export default function StagePage() {
       return;
     }
 
-    const nextStageNumber = stage.phaseNumber + 1;
     const session = getStoredSession();
+    const currentResponse = session.responses?.[stage.id];
+    const nextStageId = currentResponse?.evaluation?.nextStageId;
+
+    if (!nextStageId) {
+      const summaryUrl = sessionCode
+        ? `/simulation/demo/summary?session=${sessionCode}`
+        : "/simulation/demo/summary";
+
+      router.push(summaryUrl);
+      return;
+    }
 
     saveStoredSession({
       ...session,
-      currentStageNumber: nextStageNumber,
+      currentStageId: nextStageId,
     });
 
-    const nextUrl =
-      nextStageNumber <= 6
-        ? sessionCode
-          ? `/simulation/demo/stage/${nextStageNumber}?session=${sessionCode}`
-          : `/simulation/demo/stage/${nextStageNumber}`
-        : sessionCode
-          ? `/simulation/demo/stage/7?session=${sessionCode}`
-          : "/simulation/demo/stage/7";
+    const nextUrl = sessionCode
+      ? `/simulation/demo/stage/${nextStageId}?session=${sessionCode}`
+      : `/simulation/demo/stage/${nextStageId}`;
 
     router.push(nextUrl);
   };
@@ -254,12 +295,6 @@ export default function StagePage() {
                   <p className="whitespace-pre-line text-sm leading-7 text-emerald-700">
                     {feedback}
                   </p>
-
-                  {decision && (
-                    <div className="mt-3">
-                      <Badge className="capitalize">Result: {decision}</Badge>
-                    </div>
-                  )}
                 </div>
               )}
 
@@ -295,21 +330,16 @@ export default function StagePage() {
               </CardHeader>
               <CardContent className="space-y-3 text-sm text-slate-600">
                 <p>
-                  Your answer is evaluated against hidden key operational
-                  criteria.
+                  Your answer is evaluated against hidden operational criteria.
                 </p>
                 <p>
-                  The next stage always continues, but the scenario may become
-                  more stable, more pressured, or more severe depending on your
-                  response.
+                  The simulation always moves forward, but the next stage can
+                  branch into a more controlled or more pressured consequence
+                  pathway depending on what your response covered.
                 </p>
                 <p>
-                  Feedback is shown after each answer so you understand how your
-                  response affected the simulation.
-                </p>
-                <p>
-                   The meeting stays available in the g window while the
-                  simulation continues.
+                  Feedback is shown after each answer so you can understand what
+                  was covered well and what important actions were missing.
                 </p>
               </CardContent>
             </Card>
