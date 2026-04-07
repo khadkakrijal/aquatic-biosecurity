@@ -44,7 +44,7 @@ export default async function SessionLobbyPage({
   const isHost = session.host_user_id === user.id;
 
   const currentParticipant = participants?.find(
-    (participant) => participant.user_id === user.id
+    (participant) => participant.user_id === user.id,
   );
 
   const displayName =
@@ -68,6 +68,7 @@ export default async function SessionLobbyPage({
       <SessionMeetingBootstrap
         sessionCode={session.session_code}
         userName={displayName}
+        isHost={isHost}
       />
 
       <div className="mx-auto max-w-7xl px-4 py-10">
@@ -128,8 +129,8 @@ export default async function SessionLobbyPage({
                 <StartSimulationButton sessionCode={session.session_code} />
               ) : session.status === "active" ? (
                 <div className="rounded-2xl border border-cyan-200 bg-cyan-50 px-4 py-3 text-sm text-cyan-800">
-                  The host has started the simulation. Please stay in the meeting
-                  and watch the host screen share.
+                  The host has started the simulation. Please stay in the
+                  meeting and watch the host screen share.
                 </div>
               ) : (
                 <p className="text-sm text-slate-600">
