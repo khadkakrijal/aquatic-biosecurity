@@ -49,6 +49,6 @@ export async function POST(_request: Request, { params }: StartRouteProps) {
   return NextResponse.json({
     success: true,
     sessionCode: session.session_code,
-    nextUrl: `/simulation/demo/stage/1?session=${session.session_code}`,
+    nextUrl: `/simulation/demo/stage/p1?session=${session.session_code}`,
   });
 }

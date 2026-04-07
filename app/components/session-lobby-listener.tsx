@@ -12,6 +12,25 @@ interface SessionLobbyListenerProps {
   isHost: boolean;
 }
 
+function mapStageNumberToStageId(stageNumber?: number | null): string {
+  switch (stageNumber) {
+    case 1:
+      return "p1";
+    case 2:
+      return "p2-controlled";
+    case 3:
+      return "p3-controlled";
+    case 4:
+      return "p4-controlled";
+    case 5:
+      return "p5-controlled";
+    case 6:
+      return "p6-controlled";
+    default:
+      return "p1";
+  }
+}
+
 export default function SessionLobbyListener({
   sessionId,
   sessionCode,
@@ -28,7 +47,9 @@ export default function SessionLobbyListener({
     if (initialStatus === "active") {
       if (isHost) {
         router.replace(
-          `/simulation/demo/stage/${initialStageNumber}?session=${sessionCode}`
+          `/simulation/demo/stage/${mapStageNumberToStageId(
+            initialStageNumber
+          )}?session=${sessionCode}`
         );
       }
       return;
@@ -56,9 +77,9 @@ export default function SessionLobbyListener({
 
           if (isHost) {
             router.replace(
-              `/simulation/demo/stage/${data.current_stage_number ?? 1}?session=${
-                data.session_code ?? sessionCode
-              }`
+              `/simulation/demo/stage/${mapStageNumberToStageId(
+                data.current_stage_number
+              )}?session=${data.session_code ?? sessionCode}`
             );
           }
 
@@ -80,7 +101,14 @@ export default function SessionLobbyListener({
       isMounted = false;
       clearInterval(interval);
     };
-  }, [initialStageNumber, initialStatus, isHost, router, sessionCode, sessionId]);
+  }, [
+    initialStageNumber,
+    initialStatus,
+    isHost,
+    router,
+    sessionCode,
+    sessionId,
+  ]);
 
   return null;
 }

@@ -25,7 +25,7 @@ export default function StartSimulationButton({
         throw new Error("Failed to start simulation");
       }
 
-      router.push(`/simulation/demo/stage/1?session=${sessionCode}`);
+      router.push(`/simulation/demo/stage/p1?session=${sessionCode}`);
     } catch (error) {
       console.error("Start simulation error:", error);
       alert("Failed to start simulation.");

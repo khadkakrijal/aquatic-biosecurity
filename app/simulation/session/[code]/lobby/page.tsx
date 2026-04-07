@@ -65,9 +65,11 @@ export default async function SessionLobbyPage({
         isHost={isHost}
       />
 
-      <SessionMeetingBootstrap
+      <SessionLobbyListener
+        sessionId={session.id}
         sessionCode={session.session_code}
-        userName={displayName}
+        initialStatus={session.status}
+        initialStageNumber={session.current_stage_number}
         isHost={isHost}
       />
 
