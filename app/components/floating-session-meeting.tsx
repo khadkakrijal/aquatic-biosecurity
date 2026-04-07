@@ -7,6 +7,7 @@ interface ActiveMeetingState {
   roomName: string;
   sessionCode: string;
   userName: string;
+  isHost?: boolean;
 }
 
 export default function FloatingSessionMeeting() {
@@ -80,6 +81,9 @@ export default function FloatingSessionMeeting() {
           <p className="text-sm font-semibold text-slate-900">Meeting Room</p>
           <p className="text-xs text-slate-500">{meeting.sessionCode}</p>
           <p className="text-xs text-slate-400">{meeting.userName}</p>
+          <p className="text-[11px] text-slate-400">
+            {meeting.isHost ? "Host controls session" : "Viewer mode"}
+          </p>
         </div>
 
         <div className="flex gap-2">
@@ -111,13 +115,14 @@ export default function FloatingSessionMeeting() {
         className={`overflow-hidden transition-all duration-200 ${
           hidden || minimized
             ? "max-h-0 p-0 opacity-0"
-            : "max-h-[400px] p-3 opacity-100"
+            : "max-h-[420px] p-3 opacity-100"
         }`}
       >
         <JitsiMeeting
           roomName={meeting.roomName}
           userName={meeting.userName}
-          height={260}
+          height={280}
+          isHost={Boolean(meeting.isHost)}
         />
       </div>
     </div>

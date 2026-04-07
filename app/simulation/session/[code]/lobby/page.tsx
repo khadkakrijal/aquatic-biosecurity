@@ -44,7 +44,7 @@ export default async function SessionLobbyPage({
   const isHost = session.host_user_id === user.id;
 
   const currentParticipant = participants?.find(
-    (participant) => participant.user_id === user.id,
+    (participant) => participant.user_id === user.id
   );
 
   const displayName =
@@ -65,11 +65,9 @@ export default async function SessionLobbyPage({
         isHost={isHost}
       />
 
-      <SessionLobbyListener
-        sessionId={session.id}
+      <SessionMeetingBootstrap
         sessionCode={session.session_code}
-        initialStatus={session.status}
-        initialStageNumber={session.current_stage_number}
+        userName={displayName}
         isHost={isHost}
       />
 
@@ -132,7 +130,7 @@ export default async function SessionLobbyPage({
               ) : session.status === "active" ? (
                 <div className="rounded-2xl border border-cyan-200 bg-cyan-50 px-4 py-3 text-sm text-cyan-800">
                   The host has started the simulation. Please stay in the
-                  meeting and watch the host screen share.
+                  meeting and watch the host walkthrough.
                 </div>
               ) : (
                 <p className="text-sm text-slate-600">
@@ -150,8 +148,8 @@ export default async function SessionLobbyPage({
             <div className="space-y-4 rounded-2xl border bg-slate-50 p-5">
               <p className="text-sm leading-7 text-slate-700">
                 {isHost
-                  ? "Start the simulation, then share your screen inside the meeting so all participants can follow along."
-                  : "You are in viewer mode. The host will run the simulation and share their screen in the meeting."}
+                  ? "Join the meeting below. After starting the simulation, please use the share screen option inside the meeting so participants can follow your screen."
+                  : "You are in viewer mode. Stay in the meeting and watch the host walkthrough."}
               </p>
 
               <div className="rounded-2xl bg-white p-4 text-sm text-slate-600">

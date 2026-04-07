@@ -4,15 +4,7 @@ import { useEffect, useRef } from "react";
 
 declare global {
   interface Window {
-    JitsiMeetExternalAPI: any;
-    __simulationJitsi?: {
-      api: any | null;
-      roomName: string;
-      userName: string;
-      isHost: boolean;
-      hostNode: HTMLDivElement | null;
-      parkingNode: HTMLDivElement | null;
-    };
+    JitsiMeetExternalAPI?: any;
   }
 }
 
@@ -27,14 +19,15 @@ interface JitsiMeetingProps {
 export default function JitsiMeeting({
   roomName,
   userName,
-  height = 260,
+  height = 280,
   onReady,
   isHost = false,
 }: JitsiMeetingProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const apiRef = useRef<any>(null);
 
   useEffect(() => {
-    let cancelled = false;
+    let disposed = false;
 
     const closeMeetingBox = () => {
       localStorage.removeItem("active-simulation-meeting");
@@ -42,81 +35,51 @@ export default function JitsiMeeting({
       window.dispatchEvent(new Event("force-close-simulation-meeting"));
     };
 
-    const getStore = () => {
-      if (!window.__simulationJitsi) {
-        const parkingNode = document.createElement("div");
-        parkingNode.id = "jitsi-parking-node";
-        parkingNode.style.display = "none";
-        document.body.appendChild(parkingNode);
+    const loadScript = () =>
+      new Promise<void>((resolve, reject) => {
+        if (window.JitsiMeetExternalAPI) {
+          resolve();
+          return;
+        }
 
-        const hostNode = document.createElement("div");
-        hostNode.style.width = "100%";
-        hostNode.style.height = `${height}px`;
+        const existing = document.querySelector(
+          'script[src="https://meet.jit.si/external_api.js"]'
+        ) as HTMLScriptElement | null;
 
-        window.__simulationJitsi = {
-          api: null,
-          roomName: "",
-          userName: "",
-          isHost: false,
-          hostNode,
-          parkingNode,
-        };
-      }
+        if (existing) {
+          existing.addEventListener("load", () => resolve(), { once: true });
+          existing.addEventListener("error", () => reject(new Error("Failed to load Jitsi script")), {
+            once: true,
+          });
+          return;
+        }
 
-      return window.__simulationJitsi;
-    };
+        const script = document.createElement("script");
+        script.src = "https://meet.jit.si/external_api.js";
+        script.async = true;
+        script.onload = () => resolve();
+        script.onerror = () => reject(new Error("Failed to load Jitsi script"));
+        document.body.appendChild(script);
+      });
 
-    const attachHostNode = () => {
-      const store = getStore();
-      if (!containerRef.current || !store.hostNode) return;
+    const createMeeting = async () => {
+      try {
+        await loadScript();
 
-      store.hostNode.style.width = "100%";
-      store.hostNode.style.height = `${height}px`;
+        if (disposed || !containerRef.current || !window.JitsiMeetExternalAPI) {
+          return;
+        }
 
-      if (store.hostNode.parentElement !== containerRef.current) {
+        if (apiRef.current) {
+          apiRef.current.dispose?.();
+          apiRef.current = null;
+        }
+
         containerRef.current.innerHTML = "";
-        containerRef.current.appendChild(store.hostNode);
-      }
-    };
 
-    const bindMeetingEvents = (api: any) => {
-      api.addListener("videoConferenceLeft", () => {
-        closeMeetingBox();
-      });
-
-      api.addListener("readyToClose", () => {
-        closeMeetingBox();
-      });
-    };
-
-    const createMeeting = () => {
-      if (cancelled || !window.JitsiMeetExternalAPI) return;
-
-      const store = getStore();
-      attachHostNode();
-
-      const roomChanged = store.roomName !== roomName;
-      const userChanged = store.userName !== userName;
-      const roleChanged = store.isHost !== isHost;
-
-      if (store.api && !roomChanged && !userChanged && !roleChanged) {
-        onReady?.();
-        return;
-      }
-
-      if (store.api && (roomChanged || userChanged || roleChanged)) {
-        store.api.dispose?.();
-        store.api = null;
-      }
-
-      store.roomName = roomName;
-      store.userName = userName;
-      store.isHost = isHost;
-
-      if (!store.api && store.hostNode) {
-        store.api = new window.JitsiMeetExternalAPI("meet.jit.si", {
+        const api = new window.JitsiMeetExternalAPI("meet.jit.si", {
           roomName,
-          parentNode: store.hostNode,
+          parentNode: containerRef.current,
           width: "100%",
           height,
           userInfo: {
@@ -141,51 +104,42 @@ export default function JitsiMeeting({
                   "settings",
                   "tileview",
                 ]
-              : [
-                  "hangup",
-                  "fullscreen",
-                ],
+              : ["fullscreen", "hangup"],
           },
         });
 
-        bindMeetingEvents(store.api);
-      }
+        api.addListener("videoConferenceLeft", () => {
+          closeMeetingBox();
+        });
 
-      onReady?.();
+        api.addListener("readyToClose", () => {
+          closeMeetingBox();
+        });
+
+        api.addListener("videoConferenceJoined", () => {
+          onReady?.();
+
+          // Browsers generally require user permission / gesture for screen share.
+          // We can prompt host by opening the control in Jitsi toolbar,
+          // but cannot silently force share without permission.
+        });
+
+        apiRef.current = api;
+      } catch (error) {
+        console.error("Jitsi init error:", error);
+      }
     };
 
-    const existingScript = document.querySelector(
-      'script[src="https://meet.jit.si/external_api.js"]'
-    ) as HTMLScriptElement | null;
-
-    if (window.JitsiMeetExternalAPI) {
-      createMeeting();
-    } else if (existingScript) {
-      existingScript.addEventListener("load", createMeeting, { once: true });
-    } else {
-      const script = document.createElement("script");
-      script.src = "https://meet.jit.si/external_api.js";
-      script.async = true;
-      script.onload = createMeeting;
-      document.body.appendChild(script);
-    }
+    createMeeting();
 
     return () => {
-      cancelled = true;
-
-      const store = window.__simulationJitsi;
-      if (!store?.hostNode || !store?.parkingNode) return;
-
-      if (store.hostNode.parentElement !== store.parkingNode) {
-        store.parkingNode.appendChild(store.hostNode);
+      disposed = true;
+      if (apiRef.current) {
+        apiRef.current.dispose?.();
+        apiRef.current = null;
       }
     };
   }, [roomName, userName, height, onReady, isHost]);
 
-  return (
-    <div
-      ref={containerRef}
-      className="w-full overflow-hidden rounded-xl"
-    />
-  );
+  return <div ref={containerRef} className="w-full overflow-hidden rounded-xl" />;
 }
