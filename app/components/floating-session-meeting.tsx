@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import JitsiMeeting from "./jitsi-meeting";
 
 interface ActiveMeetingState {
@@ -75,24 +75,29 @@ export default function FloatingSessionMeeting() {
     };
   }, [mounted]);
 
+  const meetingHeight = useMemo(() => {
+    if (expanded && typeof window !== "undefined") {
+      return Math.max(window.innerHeight - 84, 300);
+    }
+
+    if (minimized || hidden) {
+      return 220;
+    }
+
+    return 420;
+  }, [expanded, minimized, hidden]);
+
   if (!mounted || !meeting) return null;
 
   const panelClasses = expanded
-    ? "fixed inset-0 z-[9999] w-screen h-screen rounded-none border-0 bg-white shadow-none"
-    : "fixed bottom-4 right-4 z-50 w-[92vw] max-w-[520px] rounded-2xl border bg-white shadow-2xl";
+    ? "fixed inset-0 z-[9999] h-screen w-screen rounded-none border-0 bg-white shadow-none"
+    : "fixed bottom-4 right-4 z-50 w-[94vw] max-w-[560px] rounded-2xl border bg-white shadow-2xl";
 
-  const bodyClasses =
-    hidden || minimized
-      ? "max-h-0 p-0 opacity-0"
-      : expanded
-      ? "h-[calc(100vh-88px)] p-0 opacity-100"
-      : "max-h-[560px] p-3 opacity-100";
-
-  const meetingHeight = expanded
-    ? typeof window !== "undefined"
-      ? window.innerHeight - 88
-      : 700
-    : 380;
+  const bodyClasses = expanded
+    ? "h-[calc(100vh-84px)]"
+    : minimized || hidden
+    ? "h-0 opacity-0 pointer-events-none"
+    : "h-auto opacity-100";
 
   return (
     <div className={panelClasses}>
@@ -146,16 +151,19 @@ export default function FloatingSessionMeeting() {
       </div>
 
       <div className={`overflow-hidden transition-all duration-200 ${bodyClasses}`}>
-        {!hidden && !minimized && (
-          <div className={expanded ? "h-full w-full" : ""}>
-            <JitsiMeeting
-              roomName={meeting.roomName}
-              userName={meeting.userName}
-              height={meetingHeight}
-              isHost={Boolean(meeting.isHost)}
-            />
-          </div>
-        )}
+        <div
+          className={expanded ? "h-full w-full" : "w-full p-3"}
+          style={{
+            visibility: hidden || minimized ? "hidden" : "visible",
+          }}
+        >
+          <JitsiMeeting
+            roomName={meeting.roomName}
+            userName={meeting.userName}
+            height={meetingHeight}
+            isHost={Boolean(meeting.isHost)}
+          />
+        </div>
       </div>
     </div>
   );

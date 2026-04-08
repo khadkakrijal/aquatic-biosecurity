@@ -25,6 +25,25 @@ export default function JitsiMeeting({
 }: JitsiMeetingProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const apiRef = useRef<any>(null);
+  const currentRoomRef = useRef<string>("");
+  const currentUserRef = useRef<string>("");
+  const currentRoleRef = useRef<boolean>(false);
+
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    container.style.width = "100%";
+    container.style.height = `${height}px`;
+
+    const iframe = container.querySelector("iframe") as HTMLIFrameElement | null;
+    if (iframe) {
+      iframe.style.width = "100%";
+      iframe.style.height = `${height}px`;
+    }
+
+    apiRef.current?.resizeLargeVideo?.();
+  }, [height]);
 
   useEffect(() => {
     let disposed = false;
@@ -43,7 +62,7 @@ export default function JitsiMeeting({
         }
 
         const existing = document.querySelector(
-          'script[src="https://meet.jit.si/external_api.js"]',
+          'script[src="https://meet.jit.si/external_api.js"]'
         ) as HTMLScriptElement | null;
 
         if (existing) {
@@ -51,7 +70,7 @@ export default function JitsiMeeting({
           existing.addEventListener(
             "error",
             () => reject(new Error("Failed to load Jitsi script")),
-            { once: true },
+            { once: true }
           );
           return;
         }
@@ -64,7 +83,7 @@ export default function JitsiMeeting({
         document.body.appendChild(script);
       });
 
-    const createMeeting = async () => {
+    const createOrReuseMeeting = async () => {
       try {
         await loadScript();
 
@@ -72,12 +91,23 @@ export default function JitsiMeeting({
           return;
         }
 
+        const sameRoom = currentRoomRef.current === roomName;
+        const sameUser = currentUserRef.current === userName;
+        const sameRole = currentRoleRef.current === isHost;
+
+        if (apiRef.current && sameRoom && sameUser && sameRole) {
+          onReady?.();
+          return;
+        }
+
         if (apiRef.current) {
           apiRef.current.dispose?.();
           apiRef.current = null;
+          containerRef.current.innerHTML = "";
         }
 
-        containerRef.current.innerHTML = "";
+        containerRef.current.style.width = "100%";
+        containerRef.current.style.height = `${height}px`;
 
         const api = new window.JitsiMeetExternalAPI("meet.jit.si", {
           roomName,
@@ -123,26 +153,27 @@ export default function JitsiMeeting({
         });
 
         apiRef.current = api;
+        currentRoomRef.current = roomName;
+        currentUserRef.current = userName;
+        currentRoleRef.current = isHost;
       } catch (error) {
         console.error("Jitsi init error:", error);
       }
     };
 
-    createMeeting();
+    createOrReuseMeeting();
 
     return () => {
       disposed = true;
-      if (apiRef.current) {
-        apiRef.current.dispose?.();
-        apiRef.current = null;
-      }
     };
-  }, [roomName, userName, height, onReady, isHost]);
+  }, [roomName, userName, isHost, onReady, height]);
 
-  return (
-    <div
-      ref={containerRef}
-      className="h-full w-full overflow-hidden rounded-xl"
-    />
-  );
+  useEffect(() => {
+    return () => {
+      apiRef.current?.dispose?.();
+      apiRef.current = null;
+    };
+  }, []);
+
+  return <div ref={containerRef} className="h-full w-full overflow-hidden" />;
 }
