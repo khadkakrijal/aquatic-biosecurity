@@ -7,11 +7,10 @@ import {
   getStoredSession,
   resetStoredSession,
 } from "@/app/lib/session-storage";
+import { ScenarioSeverity } from "@/app/types/simulation";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-
-type SeverityType = "manageable" | "elevated" | "severe";
 
 interface StageResponse {
   stageId: string;
@@ -21,8 +20,12 @@ interface StageResponse {
   scenarioTextShown: string;
   submittedAt?: string;
   evaluation?: {
+    score?: number;
     feedback: string;
-    scenarioSeverity: SeverityType;
+    decision?: "strong" | "mixed" | "limited";
+    scenarioSeverity: ScenarioSeverity;
+    matchedCriteriaIds?: string[];
+    missingRequiredCriteriaIds?: string[];
     nextScenarioText?: string;
     nextStageId?: string;
     branchReason?: string;
@@ -67,7 +70,7 @@ export default function SummaryPage() {
     );
   }, [orderedResponses]);
 
-  const overallSeverity = useMemo<SeverityType>(() => {
+  const overallSeverity = useMemo<ScenarioSeverity>(() => {
     const severities = stageResponses.map(
       (item) => item.evaluation?.scenarioSeverity,
     );
@@ -95,15 +98,35 @@ export default function SummaryPage() {
       .map(([text, count]) => ({ text, count }));
   }, [stageResponses]);
 
+  const repeatedThemes = useMemo(() => {
+    const themeMap = new Map<string, number>();
+
+    stageResponses.forEach((response) => {
+      const themes = response.evaluation?.missedThemes || [];
+      themes.forEach((theme) => {
+        if (!theme) return;
+        themeMap.set(theme, (themeMap.get(theme) || 0) + 1);
+      });
+    });
+
+    return Array.from(themeMap.entries())
+      .sort((a, b) => b[1] - a[1])
+      .map(([theme, count]) => ({ theme, count }));
+  }, [stageResponses]);
+
   const visitedPath = useMemo(() => {
     return stageResponses.map((response) => {
       const stage = invasiveMusselScenario.stages.find(
         (item) => item.id === response.stageId,
       );
+
       return {
         stageId: response.stageId,
         phaseNumber: response.phaseNumber,
         title: stage?.title || response.stageId,
+        branchFamily: stage?.branchFamily || "unknown",
+        decision: response.evaluation?.decision || "mixed",
+        branchReason: response.evaluation?.branchReason || "",
       };
     });
   }, [stageResponses]);
@@ -122,6 +145,7 @@ export default function SummaryPage() {
             totalStages: stageResponses.length,
             overallSeverity,
             repeatedGaps,
+            repeatedThemes,
             reflectionIncluded: Boolean(reflectionResponse),
             visitedPath,
           },
@@ -132,8 +156,13 @@ export default function SummaryPage() {
             scenarioTextShown: item.scenarioTextShown,
             evaluation: item.evaluation
               ? {
+                  score: item.evaluation.score,
                   feedback: item.evaluation.feedback,
+                  decision: item.evaluation.decision,
                   scenarioSeverity: item.evaluation.scenarioSeverity,
+                  matchedCriteriaIds: item.evaluation.matchedCriteriaIds || [],
+                  missingRequiredCriteriaIds:
+                    item.evaluation.missingRequiredCriteriaIds || [],
                   nextScenarioText: item.evaluation.nextScenarioText,
                   nextStageId: item.evaluation.nextStageId,
                   branchReason: item.evaluation.branchReason,
@@ -176,6 +205,7 @@ export default function SummaryPage() {
     orderedResponses,
     overallSeverity,
     repeatedGaps,
+    repeatedThemes,
     reflectionResponse,
     visitedPath,
   ]);
@@ -189,7 +219,7 @@ export default function SummaryPage() {
     router.push("/scenario/invasive-mussel");
   };
 
-  const getSeverityBadgeClass = (severity?: SeverityType) => {
+  const getSeverityBadgeClass = (severity?: ScenarioSeverity) => {
     switch (severity) {
       case "manageable":
         return "bg-cyan-600 text-white";
@@ -308,7 +338,10 @@ export default function SummaryPage() {
                         key={`${item.stageId}-${index}`}
                         className="leading-6"
                       >
-                        {index + 1}. Phase {item.phaseNumber} — {item.title}
+                        {index + 1}. Phase {item.phaseNumber} — {item.title}{" "}
+                        <span className="text-slate-400">
+                          ({item.branchFamily}, {item.decision})
+                        </span>
                       </li>
                     ))}
                   </ul>
@@ -325,6 +358,22 @@ export default function SummaryPage() {
                       <li key={`${gap.text}-${index}`} className="leading-6">
                         - {gap.text}
                         {gap.count > 1 ? ` (${gap.count} times)` : ""}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {repeatedThemes.length > 0 && (
+                <div>
+                  <h3 className="mb-2 font-semibold text-slate-900">
+                    Repeated missed themes
+                  </h3>
+                  <ul className="space-y-2">
+                    {repeatedThemes.map((theme, index) => (
+                      <li key={`${theme.theme}-${index}`} className="leading-6">
+                        - {theme.theme}
+                        {theme.count > 1 ? ` (${theme.count} times)` : ""}
                       </li>
                     ))}
                   </ul>
@@ -367,66 +416,61 @@ export default function SummaryPage() {
                 <CardHeader>
                   <div className="flex flex-wrap items-center gap-2">
                     <CardTitle className="text-xl">
-                      Phase {response.phaseNumber} –{" "}
-                      {stage?.title || response.stageId}
+                      Phase {response.phaseNumber} — {stage?.title || response.stageId}
                     </CardTitle>
 
-                    <Badge
-                      className={getSeverityBadgeClass(
-                        response.evaluation?.scenarioSeverity,
-                      )}
-                    >
-                      {response.evaluation?.scenarioSeverity || "unknown"}
-                    </Badge>
+                    {response.evaluation?.decision && (
+                      <Badge variant="outline" className="capitalize">
+                        {response.evaluation.decision}
+                      </Badge>
+                    )}
+
+                    {stage?.branchFamily && (
+                      <Badge className="bg-slate-100 text-slate-700">
+                        {stage.branchFamily}
+                      </Badge>
+                    )}
                   </div>
                 </CardHeader>
 
-                <CardContent className="space-y-5">
+                <CardContent className="space-y-4">
                   <div>
-                    <h3 className="mb-2 text-sm font-semibold text-slate-900">
+                    <h4 className="mb-2 font-semibold text-slate-900">
                       Situation shown
-                    </h3>
-                    <div className="rounded-2xl border bg-slate-50/70 p-4">
-                      <p className="text-sm leading-7 text-slate-700">
-                        {response.scenarioTextShown}
-                      </p>
-                    </div>
+                    </h4>
+                    <p className="whitespace-pre-line text-sm leading-7 text-slate-600">
+                      {response.scenarioTextShown}
+                    </p>
                   </div>
 
                   <div>
-                    <h3 className="mb-2 text-sm font-semibold text-slate-900">
+                    <h4 className="mb-2 font-semibold text-slate-900">
                       Your response
-                    </h3>
-                    <div className="rounded-2xl border bg-white p-4">
-                      <p className="whitespace-pre-line text-sm leading-7 text-slate-700">
-                        {response.combinedAnswer}
-                      </p>
-                    </div>
+                    </h4>
+                    <p className="whitespace-pre-line text-sm leading-7 text-slate-600">
+                      {response.combinedAnswer}
+                    </p>
                   </div>
 
                   {response.evaluation?.feedback && (
                     <div>
-                      <h3 className="mb-2 text-sm font-semibold text-slate-900">
+                      <h4 className="mb-2 font-semibold text-slate-900">
                         Feedback
-                      </h3>
-                      <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
-                        <p className="whitespace-pre-line text-sm leading-7 text-emerald-800">
-                          {response.evaluation.feedback}
-                        </p>
-                      </div>
+                      </h4>
+                      <p className="whitespace-pre-line text-sm leading-7 text-slate-600">
+                        {response.evaluation.feedback}
+                      </p>
                     </div>
                   )}
 
-                  {response.evaluation?.nextScenarioText && (
+                  {response.evaluation?.branchReason && (
                     <div>
-                      <h3 className="mb-2 text-sm font-semibold text-slate-900">
-                        Incident progression
-                      </h3>
-                      <div className="rounded-2xl border border-cyan-200 bg-cyan-50 p-4">
-                        <p className="text-sm leading-7 text-cyan-900">
-                          {response.evaluation.nextScenarioText}
-                        </p>
-                      </div>
+                      <h4 className="mb-2 font-semibold text-slate-900">
+                        Why this branch happened
+                      </h4>
+                      <p className="text-sm leading-7 text-slate-600">
+                        {response.evaluation.branchReason}
+                      </p>
                     </div>
                   )}
                 </CardContent>

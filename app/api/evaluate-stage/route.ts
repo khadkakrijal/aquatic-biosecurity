@@ -1,542 +1,320 @@
-import { openai } from "@/app/lib/ai-summary";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+import {
+  Criterion,
+  EvaluationDecision,
+  ScenarioSeverity,
+  ScenarioStage,
+  StageEvaluationResult,
+  ThemeCategory,
+} from "@/app/types/simulation";
 
-type ThemeCategory =
-  | "Protocols"
-  | "Data"
-  | "Stakeholders"
-  | "Constraints"
-  | "Communication"
-  | "Expectations";
+type EvaluateStageRequest = {
+  stage: ScenarioStage;
+  userAnswer: string;
+  previousOutcome?: string;
+};
 
-type EvaluationDecision = "strong" | "mixed" | "limited";
-type ScenarioSeverity = "manageable" | "elevated" | "severe";
-
-const VALID_THEMES: ThemeCategory[] = [
-  "Protocols",
-  "Data",
-  "Stakeholders",
-  "Constraints",
-  "Communication",
-  "Expectations",
-];
-
-function normalizeText(value: string) {
-  return value.toLowerCase().replace(/\s+/g, " ").trim();
+function normaliseText(text: string) {
+  return text.toLowerCase().replace(/[^\w\s-]/g, " ");
 }
 
-function extractJsonObject(raw: string) {
-  const cleaned = raw
-    .replace(/^```json\s*/i, "")
-    .replace(/^```\s*/i, "")
-    .replace(/\s*```$/i, "")
-    .trim();
+function keywordHitCount(answer: string, keywords: string[]) {
+  const safeAnswer = normaliseText(answer);
 
-  try {
-    return JSON.parse(cleaned);
-  } catch {
-    const firstBrace = cleaned.indexOf("{");
-    const lastBrace = cleaned.lastIndexOf("}");
-
-    if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
-      const possibleJson = cleaned.slice(firstBrace, lastBrace + 1);
-      return JSON.parse(possibleJson);
-    }
-
-    throw new Error("AI returned invalid JSON.");
-  }
-}
-
-function countWords(text: string) {
-  return text.trim().split(/\s+/).filter(Boolean).length;
-}
-
-function sentenceCount(text: string) {
-  return text
-    .split(/[.!?]\s+/)
-    .map((part) => part.trim())
-    .filter(Boolean).length;
-}
-
-function keywordHitsForCriterion(answer: string, keywords: string[] = []) {
-  if (!keywords.length) return 0;
-  const normalized = normalizeText(answer);
-  let hits = 0;
-
-  for (const keyword of keywords) {
-    const k = normalizeText(keyword);
-    if (k && normalized.includes(k)) {
-      hits += 1;
-    }
-  }
-
-  return hits;
-}
-
-function buildFallbackMissedCriteriaTexts(stage: any, missingIds: string[]) {
-  return missingIds
-    .map(
-      (id) =>
-        stage?.criteria?.find((criterion: any) => criterion.id === id)?.text,
-    )
-    .filter(Boolean);
-}
-
-function buildFallbackStrengths(stage: any, matchedIds: string[]) {
-  return matchedIds
-    .map(
-      (id) =>
-        stage?.criteria?.find((criterion: any) => criterion.id === id)?.text,
-    )
-    .filter(Boolean)
-    .slice(0, 3);
-}
-
-function assessAnswerQuality(answer: string, stage: any) {
-  const normalized = normalizeText(answer);
-  const words = countWords(answer);
-  const sentences = sentenceCount(answer);
-
-  const uncertainPatterns = [
-    "i don't know",
-    "i dont know",
-    "dont know",
-    "don't know",
-    "idk",
-    "not sure",
-    "unsure",
-    "no idea",
-    "not certain",
-    "cannot say",
-    "can't say",
-    "n/a",
-  ];
-
-  const isUncertain = uncertainPatterns.some((pattern) =>
-    normalized.includes(pattern),
-  );
-
-  const exactWeakAnswers = new Set([
-    "no idea",
-    "dont know",
-    "don't know",
-    "not sure",
-    "unsure",
-    "idk",
-    "n/a",
-  ]);
-
-  const isExactWeakAnswer = exactWeakAnswers.has(normalized);
-
-  const genericWeakPatterns = [
-    "inform authority",
-    "inform the authority",
-    "follow the system",
-    "follow risk management",
-    "inform them",
-    "take action",
-    "do surveillance",
-    "do containment",
-    "notify them",
-    "call the team",
-    "tell stakeholders",
-  ];
-
-  const hasGenericWeakPattern = genericWeakPatterns.some((pattern) =>
-    normalized.includes(pattern),
-  );
-
-  const criteria = Array.isArray(stage?.criteria) ? stage.criteria : [];
-  const requiredCriteriaIds = stage?.passingRules?.requiredCriteriaIds || [];
-  const requiredCriteria = criteria.filter((criterion: any) =>
-    requiredCriteriaIds.includes(criterion.id),
-  );
-
-  const totalKeywordHits = criteria.reduce((sum: number, criterion: any) => {
-    return sum + keywordHitsForCriterion(answer, criterion.keywords || []);
+  return keywords.reduce((count, keyword) => {
+    const safeKeyword = normaliseText(keyword).trim();
+    if (!safeKeyword) return count;
+    return safeAnswer.includes(safeKeyword) ? count + 1 : count;
   }, 0);
-
-  const requiredKeywordHits = requiredCriteria.reduce(
-    (sum: number, criterion: any) => {
-      return sum + keywordHitsForCriterion(answer, criterion.keywords || []);
-    },
-    0,
-  );
-
-  const keywordOnlyLikely =
-    words < 45 &&
-    totalKeywordHits >= 3 &&
-    sentences <= 2 &&
-    !normalized.includes("because") &&
-    !normalized.includes("so that") &&
-    !normalized.includes("by ") &&
-    !normalized.includes("first") &&
-    !normalized.includes("then") &&
-    !normalized.includes("while");
-
-  const tooShortForOperationalReasoning = words < 35 || sentences < 2;
-
-  return {
-    words,
-    sentences,
-    isUncertain,
-    isExactWeakAnswer,
-    hasGenericWeakPattern,
-    keywordOnlyLikely,
-    tooShortForOperationalReasoning,
-    totalKeywordHits,
-    requiredKeywordHits,
-    isClearlyWeak:
-      isExactWeakAnswer ||
-      isUncertain ||
-      hasGenericWeakPattern ||
-      keywordOnlyLikely ||
-      words < 25 ||
-      requiredKeywordHits === 0,
-  };
 }
 
-function resolveNextStage(
-  stage: any,
+function isCriterionMatched(answer: string, criterion: Criterion) {
+  const keywords = criterion.keywords || [];
+  if (!keywords.length) return false;
+
+  const hits = keywordHitCount(answer, keywords);
+  const threshold = Math.min(2, Math.max(1, Math.ceil(keywords.length / 4)));
+
+  return hits >= threshold;
+}
+
+function getDecision(
+  score: number,
+  requiredMet: boolean,
+  missingRequiredCount: number,
+  minScore: number,
+): EvaluationDecision {
+  if (requiredMet && score >= minScore + 1) return "strong";
+  if (missingRequiredCount <= 1 && score >= Math.max(1, minScore - 1)) return "mixed";
+  return "limited";
+}
+
+function getScenarioSeverity(
+  phaseNumber: number,
+  decision: EvaluationDecision,
+): ScenarioSeverity {
+  if (phaseNumber <= 2 && decision === "strong") return "manageable";
+  if (phaseNumber >= 5 && decision === "limited") return "severe";
+  if (phaseNumber >= 4 && decision !== "strong") return "elevated";
+  if (decision === "limited") return "elevated";
+  return "manageable";
+}
+
+function resolveNextStageId(
+  stage: ScenarioStage,
   decision: EvaluationDecision,
   missingRequiredCriteriaIds: string[],
 ) {
-  const nextStageMap = stage?.nextStageMap;
+  const routing = stage.nextStageMap;
 
-  if (!nextStageMap) {
-    return {
-      nextStageId: "",
-      branchReason: "",
-    };
-  }
+  if (!routing) return "complete";
 
-  const missing = Array.isArray(missingRequiredCriteriaIds)
-    ? missingRequiredCriteriaIds
-    : [];
+  if (missingRequiredCriteriaIds.length && routing.byMissingRequired) {
+    const priorityList =
+      routing.byMissingRequiredPriority?.length
+        ? routing.byMissingRequiredPriority
+        : missingRequiredCriteriaIds;
 
-  if (
-    Array.isArray(nextStageMap.byMissingRequiredPriority) &&
-    nextStageMap.byMissingRequired
-  ) {
-    for (const criterionId of nextStageMap.byMissingRequiredPriority) {
+    for (const criterionId of priorityList) {
       if (
-        missing.includes(criterionId) &&
-        nextStageMap.byMissingRequired[criterionId]
+        missingRequiredCriteriaIds.includes(criterionId) &&
+        routing.byMissingRequired[criterionId]
       ) {
-        return {
-          nextStageId: nextStageMap.byMissingRequired[criterionId],
-          branchReason:
-            "The next branch was selected because a priority required operational element was not clearly addressed.",
-        };
+        return routing.byMissingRequired[criterionId];
       }
     }
   }
 
-  if (nextStageMap.byMissingRequired) {
-    for (const criterionId of missing) {
-      const mapped = nextStageMap.byMissingRequired[criterionId];
-      if (mapped) {
-        return {
-          nextStageId: mapped,
-          branchReason:
-            "The next branch was selected because a required operational element was not clearly addressed.",
-        };
-      }
-    }
-  }
+  if (decision === "strong" && routing.strong) return routing.strong;
+  if (decision === "mixed" && routing.mixed) return routing.mixed;
+  if (decision === "limited" && routing.limited) return routing.limited;
 
-  const mappedByDecision =
-    (decision === "strong" && nextStageMap.strong) ||
-    (decision === "mixed" && nextStageMap.mixed) ||
-    (decision === "limited" && nextStageMap.limited) ||
-    nextStageMap.fallback ||
-    "";
-
-  return {
-    nextStageId: mappedByDecision,
-    branchReason:
-      decision === "strong"
-        ? "The next branch was selected because the response covered key operational priorities with stronger practical detail."
-        : decision === "mixed"
-          ? "The next branch was selected because the response addressed some important actions but still left notable operational gaps."
-          : "The next branch was selected because several important response actions were weak or missing.",
-  };
+  return routing.fallback ?? "complete";
 }
 
-function enforceDecisionAndMissingCriteria(
-  stage: any,
-  rawDecision: EvaluationDecision,
-  rawMissingRequired: string[],
-  answerQuality: ReturnType<typeof assessAnswerQuality>,
+function getBranchReason(
+  stage: ScenarioStage,
+  matchedCriteriaIds: string[],
+  missingRequiredCriteriaIds: string[],
+  nextStageId: string,
 ) {
-  const requiredIds: string[] = stage?.passingRules?.requiredCriteriaIds || [];
-
-  let missingRequired = Array.isArray(rawMissingRequired)
-    ? rawMissingRequired.filter((id) => requiredIds.includes(id))
-    : [];
-
-  if (answerQuality.isClearlyWeak) {
-    missingRequired = [...requiredIds];
+  if (!nextStageId) {
+    return "The simulation has reached its end state and is now ready for final reflection and summary.";
   }
 
-  let decision: EvaluationDecision = rawDecision;
+  if (missingRequiredCriteriaIds.length > 0) {
+    const missed = stage.criteria.filter((criterion) =>
+      missingRequiredCriteriaIds.includes(criterion.id),
+    );
 
-  if (answerQuality.isClearlyWeak) {
-    decision = "limited";
-  } else if (
-    answerQuality.tooShortForOperationalReasoning &&
+    const leadMiss = missed[0];
+
+    if (leadMiss) {
+      return `The response is moving into a more pressured consequence pathway because the answer did not cover the required criterion: "${leadMiss.text}".`;
+    }
+  }
+
+  if (matchedCriteriaIds.length > 0) {
+    return "The response covered the main required actions well enough to continue along the more controlled forward pathway.";
+  }
+
+  return "The response is progressing forward through the simulation, but with elevated consequence pressure due to limited coverage of the expected operational actions.";
+}
+
+function buildStrengths(stage: ScenarioStage, matchedCriteriaIds: string[]) {
+  return stage.criteria
+    .filter((criterion) => matchedCriteriaIds.includes(criterion.id))
+    .map((criterion) => criterion.text)
+    .slice(0, 4);
+}
+
+function buildMissedThemes(stage: ScenarioStage, missingRequiredCriteriaIds: string[]) {
+  const themeSet = new Set<ThemeCategory>();
+
+  stage.criteria.forEach((criterion) => {
+    if (missingRequiredCriteriaIds.includes(criterion.id)) {
+      themeSet.add(criterion.theme);
+    }
+  });
+
+  return Array.from(themeSet);
+}
+
+function buildMissedCriteriaTexts(
+  stage: ScenarioStage,
+  missingRequiredCriteriaIds: string[],
+) {
+  return stage.criteria
+    .filter((criterion) => missingRequiredCriteriaIds.includes(criterion.id))
+    .map((criterion) => criterion.text);
+}
+
+function buildNextScenarioText(
+  stage: ScenarioStage,
+  decision: EvaluationDecision,
+  missingRequiredCriteriaIds: string[],
+) {
+  if (!stage.nextStageMap) return undefined;
+
+  if (missingRequiredCriteriaIds.length > 0) {
+    return "Because some critical actions were missed or only partially addressed, the situation now progresses into a more pressured consequence pathway. The next phase reflects the operational impact of those gaps.";
+  }
+
+  if (decision === "strong" || decision === "mixed") {
+    return "The response now moves forward into the next phase on a more controlled pathway. The next stage still becomes more complex, but the early actions taken have reduced some consequence pressure.";
+  }
+
+  return "The simulation continues forward, but the next stage reflects a more escalated operational picture because important actions were not covered strongly enough.";
+}
+
+function buildFeedback(
+  stage: ScenarioStage,
+  matchedCriteriaIds: string[],
+  missingRequiredCriteriaIds: string[],
+  decision: EvaluationDecision,
+) {
+  const matched = stage.criteria.filter((criterion) =>
+    matchedCriteriaIds.includes(criterion.id),
+  );
+  const missed = stage.criteria.filter((criterion) =>
+    missingRequiredCriteriaIds.includes(criterion.id),
+  );
+
+  const strengthsText = matched.length
+    ? `Covered well: ${matched.map((item) => item.text).join("; ")}.`
+    : "Covered well: none of the major hidden criteria were clearly identified.";
+
+  const gapsText = missed.length
+    ? `Important gaps: ${missed.map((item) => item.text).join("; ")}.`
+    : "Important gaps: no required criteria were missed.";
+
+  const decisionText =
     decision === "strong"
-  ) {
-    decision = "mixed";
-  }
+      ? "Overall, this response was strong enough to keep the scenario on a more controlled forward path."
+      : decision === "mixed"
+      ? "Overall, this response covered some key actions but still left important gaps, so the scenario may continue with elevated pressure."
+      : "Overall, this response missed too many key actions, so the scenario will continue into a more pressured consequence pathway.";
 
-  if (missingRequired.length > 0 && decision === "strong") {
-    decision = missingRequired.length >= 2 ? "limited" : "mixed";
-  }
-
-  if (
-    missingRequired.length === 0 &&
-    decision === "limited" &&
-    !answerQuality.isClearlyWeak
-  ) {
-    decision = "mixed";
-  }
-
-  return {
-    decision,
-    missingRequiredCriteriaIds: missingRequired,
-  };
+  return `${strengthsText}\n\n${gapsText}\n\n${decisionText}`;
 }
 
-function severityFromDecision(decision: EvaluationDecision): ScenarioSeverity {
-  if (decision === "strong") return "manageable";
-  if (decision === "mixed") return "elevated";
-  return "severe";
-}
-
-export async function POST(request: Request) {
+export async function POST(req: NextRequest) {
   try {
-    const body = await request.json();
-    const { stage, userAnswer, previousOutcome } = body;
+    const body = (await req.json()) as EvaluateStageRequest;
 
-    if (!stage || !userAnswer) {
+    const stage = body.stage;
+    const userAnswer = body.userAnswer?.trim() || "";
+
+    if (!stage) {
       return NextResponse.json(
-        { error: "Missing stage or userAnswer." },
+        { error: "Stage is required." },
         { status: 400 },
       );
     }
 
-    const answer = String(userAnswer).trim();
-    const answerQuality = assessAnswerQuality(answer, stage);
-
-    if (answerQuality.isClearlyWeak) {
-      const missingRequiredCriteriaIds =
-        stage.passingRules?.requiredCriteriaIds || [];
-      const nextStage = resolveNextStage(
-        stage,
-        "limited",
-        missingRequiredCriteriaIds,
-      );
-
-      return NextResponse.json({
+    if (stage.id === "complete") {
+      const result: StageEvaluationResult = {
         score: 0,
         matchedCriteriaIds: [],
-        missingRequiredCriteriaIds,
-        feedback: `Your response only covered the situation at a very limited level.
-
-- The answer was too brief or too uncertain to show clear operational decision-making
-- Important response actions were not explained in enough practical detail
-- Key areas such as coordination, surveillance, containment, compliance, logistics, or communication were not clearly addressed
-
-To strengthen your response, explain the practical actions you would take, who would be involved, how you would prioritise them, and how those actions would reduce risk at this stage.`,
-        decision: "limited" as EvaluationDecision,
-        scenarioSeverity: "severe" as ScenarioSeverity,
-        nextScenarioText:
-          "Because several critical actions were not clearly addressed, the situation is now worsening. Spread risk is increasing, stakeholder concern is growing, and the next stage will involve greater operational pressure and reduced flexibility in the response.",
-        nextStageId: nextStage.nextStageId,
-        branchReason: nextStage.branchReason,
+        missingRequiredCriteriaIds: [],
+        feedback:
+          "Your final reflection has been saved. You can now move to the final simulation summary.",
+        decision: "strong",
+        scenarioSeverity: "manageable",
+        nextScenarioText: undefined,
+        nextStageId: "",
+        branchReason:
+          "The simulation has reached its final reflection stage and is ready for summary generation.",
         strengths: [],
-        missedThemes: [] as ThemeCategory[],
-        missedCriteriaTexts: buildFallbackMissedCriteriaTexts(
-          stage,
-          missingRequiredCriteriaIds,
-        ),
-      });
+        missedThemes: [],
+        missedCriteriaTexts: [],
+      };
+
+      return NextResponse.json(result);
     }
 
-    const prompt = `
-You are evaluating a user's response in an aquatic biosecurity simulation.
+    if (!userAnswer) {
+      return NextResponse.json(
+        { error: "User answer is required." },
+        { status: 400 },
+      );
+    }
 
-Stage title: ${stage.title}
-Stage id: ${stage.id}
-Phase number: ${stage.phaseNumber}
-Base scenario text:
-${stage.baseScenarioText}
+    const weightedMatches = stage.criteria.reduce((total, criterion) => {
+      return total + (isCriterionMatched(userAnswer, criterion) ? criterion.weight || 1 : 0);
+    }, 0);
 
-Criteria:
-${JSON.stringify(stage.criteria, null, 2)}
+    const matchedCriteriaIds = stage.criteria
+      .filter((criterion) => isCriterionMatched(userAnswer, criterion))
+      .map((criterion) => criterion.id);
 
-Evaluation rules:
-${JSON.stringify(stage.passingRules, null, 2)}
+    const missingRequiredCriteriaIds = stage.criteria
+      .filter(
+        (criterion) =>
+          criterion.required && !matchedCriteriaIds.includes(criterion.id),
+      )
+      .map((criterion) => criterion.id);
 
-Previous outcome context:
-${previousOutcome || "none"}
+    const requiredMet = missingRequiredCriteriaIds.length === 0;
 
-User response:
-${answer}
-
-Return ONLY valid JSON.
-Do not include markdown fences.
-Do not include explanations before or after the JSON.
-Return exactly one JSON object in this format:
-{
-  "score": number,
-  "matchedCriteriaIds": string[],
-  "missingRequiredCriteriaIds": string[],
-  "feedback": "string",
-  "decision": "strong" | "mixed" | "limited",
-  "scenarioSeverity": "manageable" | "elevated" | "severe",
-  "nextScenarioText": "string",
-  "strengths": string[],
-  "missedThemes": string[],
-  "missedCriteriaTexts": string[]
-}
-
-Rules:
-- Evaluate whether the response addresses the criteria in substance, not only exact wording.
-- Pay close attention to required criteria and key operational themes.
-- Do not give credit for actions the user did not mention.
-- Do not reward shallow keyword-dropping, vague generic wording, or answers that only name authorities or themes without practical detail.
-- A strong answer must explain practical actions, responsible parties, and how those actions reduce risk.
-- Use "strong" when the response sufficiently covers the required actions and demonstrates practical operational understanding.
-- Use "mixed" when some important actions are present but notable gaps remain.
-- Use "limited" when critical actions are missing or the response is too weak to support an effective response.
-- matchedCriteriaIds must only include criteria genuinely addressed by the user.
-- missingRequiredCriteriaIds must include required criteria that were not clearly addressed.
-- strengths should be a short list of what the user did well in practical terms.
-- missedThemes should only contain values from:
-  "Protocols", "Data", "Stakeholders", "Constraints", "Communication", "Expectations"
-- missedCriteriaTexts should describe important missed actions in plain language, not criterion IDs.
-
-Feedback instructions:
-- The feedback must be written in a professional and clear tone.
-- Do NOT reference internal criterion IDs.
-- Do NOT use pass, partial, fail, passed, failed, or similar grading language.
-- Start with a short paragraph explaining what the response covered well.
-- Then list weaker or missing areas using bullet points.
-- Use plain text bullet points beginning with "- ".
-- End with a short improvement summary explaining what would strengthen the response.
-- The feedback should feel like practical operational guidance, not a test result.
-
-Scenario progression instructions:
-- The nextScenarioText must dynamically evolve the incident based on the user's response quality.
-- If the decision is "limited", the scenario should clearly worsen and mention stronger operational pressure.
-- If the decision is "mixed", the scenario should remain controllable but show emerging strain or consequences.
-- If the decision is "strong", the scenario can remain more controlled, though still realistic and pressured.
-`;
-
-    const response = await openai.responses.create({
-      model: "gpt-5.1",
-      input: prompt,
-    });
-
-    const parsed = extractJsonObject(response.output_text || "{}");
-
-    const sanitizedMatchedCriteriaIds = Array.isArray(parsed.matchedCriteriaIds)
-      ? parsed.matchedCriteriaIds.filter((id: string) =>
-          stage.criteria?.some((criterion: any) => criterion.id === id),
-        )
-      : [];
-
-    const sanitizedMissingRequiredCriteriaIds = Array.isArray(
-      parsed.missingRequiredCriteriaIds,
-    )
-      ? parsed.missingRequiredCriteriaIds.filter((id: string) =>
-          stage.passingRules?.requiredCriteriaIds?.includes(id),
-        )
-      : [];
-
-    const rawDecision: EvaluationDecision =
-      parsed.decision === "strong" ||
-      parsed.decision === "mixed" ||
-      parsed.decision === "limited"
-        ? parsed.decision
-        : "mixed";
-
-    const enforced = enforceDecisionAndMissingCriteria(
-      stage,
-      rawDecision,
-      sanitizedMissingRequiredCriteriaIds,
-      answerQuality,
+    const decision = getDecision(
+      weightedMatches,
+      requiredMet,
+      missingRequiredCriteriaIds.length,
+      stage.passingRules.minScore,
     );
 
-    const nextStage = resolveNextStage(
+    const scenarioSeverity = getScenarioSeverity(stage.phaseNumber, decision);
+    const nextStageId = resolveNextStageId(
       stage,
-      enforced.decision,
-      enforced.missingRequiredCriteriaIds,
+      decision,
+      missingRequiredCriteriaIds,
+    );
+    const strengths = buildStrengths(stage, matchedCriteriaIds);
+    const missedThemes = buildMissedThemes(stage, missingRequiredCriteriaIds);
+    const missedCriteriaTexts = buildMissedCriteriaTexts(
+      stage,
+      missingRequiredCriteriaIds,
+    );
+    const nextScenarioText = buildNextScenarioText(
+      stage,
+      decision,
+      missingRequiredCriteriaIds,
+    );
+    const branchReason = getBranchReason(
+      stage,
+      matchedCriteriaIds,
+      missingRequiredCriteriaIds,
+      nextStageId,
+    );
+    const feedback = buildFeedback(
+      stage,
+      matchedCriteriaIds,
+      missingRequiredCriteriaIds,
+      decision,
     );
 
-    const sanitizedMissedThemes: ThemeCategory[] = Array.isArray(
-      parsed.missedThemes,
-    )
-      ? parsed.missedThemes.filter((theme: string) =>
-          VALID_THEMES.includes(theme as ThemeCategory),
-        )
-      : [];
+    const result: StageEvaluationResult = {
+      score: weightedMatches,
+      matchedCriteriaIds,
+      missingRequiredCriteriaIds,
+      feedback,
+      decision,
+      scenarioSeverity,
+      nextScenarioText,
+      nextStageId,
+      branchReason,
+      strengths,
+      missedThemes,
+      missedCriteriaTexts,
+    };
 
-    const score =
-      typeof parsed.score === "number"
-        ? Math.max(0, Math.min(10, parsed.score))
-        : sanitizedMatchedCriteriaIds.length;
-
-    return NextResponse.json({
-      score,
-      matchedCriteriaIds: sanitizedMatchedCriteriaIds,
-      missingRequiredCriteriaIds: enforced.missingRequiredCriteriaIds,
-      feedback:
-        typeof parsed.feedback === "string" && parsed.feedback.trim()
-          ? parsed.feedback.trim()
-          : `Your response addressed some relevant aspects of the situation, but several important operational actions still need clearer explanation.
-
-- Some required actions were not described clearly enough
-- Practical implementation detail was limited in places
-- The response would be stronger with clearer sequencing, coordination, and risk-control actions
-
-To strengthen your response, explain who would do what, in what order, and how that would reduce operational risk.`,
-      decision: enforced.decision,
-      scenarioSeverity: severityFromDecision(enforced.decision),
-      nextScenarioText:
-        typeof parsed.nextScenarioText === "string" &&
-        parsed.nextScenarioText.trim()
-          ? parsed.nextScenarioText.trim()
-          : enforced.decision === "strong"
-            ? "The response remains under pressure, but stronger operational control is still being maintained as the incident develops."
-            : enforced.decision === "mixed"
-              ? "The response is still moving forward, but operational strain and consequence risk are increasing because some important actions were not fully addressed."
-              : "The situation is worsening because several important actions were not clearly addressed, reducing flexibility and increasing consequence pressure in the next phase.",
-      nextStageId: nextStage.nextStageId,
-      branchReason: nextStage.branchReason,
-      strengths:
-        Array.isArray(parsed.strengths) && parsed.strengths.length > 0
-          ? parsed.strengths.slice(0, 4)
-          : buildFallbackStrengths(stage, sanitizedMatchedCriteriaIds),
-      missedThemes: sanitizedMissedThemes,
-      missedCriteriaTexts:
-        Array.isArray(parsed.missedCriteriaTexts) &&
-        parsed.missedCriteriaTexts.length > 0
-          ? parsed.missedCriteriaTexts.slice(0, 6)
-          : buildFallbackMissedCriteriaTexts(
-              stage,
-              enforced.missingRequiredCriteriaIds,
-            ),
-    });
-  } catch (error: any) {
-    console.error("Stage evaluation route error:", error);
+    return NextResponse.json(result);
+  } catch (error) {
+    console.error("evaluate-stage error", error);
 
     return NextResponse.json(
-      {
-        error: error?.message || "Unknown evaluation error",
-      },
+      { error: "Failed to evaluate stage response." },
       { status: 500 },
     );
   }

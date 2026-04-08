@@ -21,6 +21,7 @@ export interface AdminMeta {
   updatedAt?: string;
   createdBy?: string;
   updatedBy?: string;
+  notes?: string;
 }
 
 export interface Criterion {
@@ -47,7 +48,7 @@ export interface StageRoutingRules {
   mixed?: string;
   limited?: string;
   byMissingRequired?: Record<string, string>;
-    byMissingRequiredPriority?: string[];
+  byMissingRequiredPriority?: string[];
   fallback?: string;
 }
 
@@ -64,6 +65,9 @@ export interface ScenarioStage {
   sortOrder?: number;
   isActive?: boolean;
   stageKey?: string;
+  branchFamily?: string;
+  isTerminal?: boolean;
+  summaryCategory?: string;
   adminMeta?: AdminMeta;
 }
 
@@ -100,8 +104,8 @@ export interface StageResponse {
   answers: Record<string, string>;
   combinedAnswer: string;
   scenarioTextShown: string;
-  evaluation: StageEvaluationResult;
   submittedAt?: string;
+  evaluation: StageEvaluationResult;
 }
 
 export interface SimulationSession {

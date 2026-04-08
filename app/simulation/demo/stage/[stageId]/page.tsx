@@ -6,13 +6,16 @@ import {
   getScenarioStageById,
   invasiveMusselScenario,
 } from "@/app/data/invasive-mussel-scenario";
-import { getStoredSession, saveStoredSession } from "@/app/lib/session-storage";
+import {
+  getStoredSession,
+  saveStoredSession,
+} from "@/app/lib/session-storage";
+import { ScenarioSeverity } from "@/app/types/simulation";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 type DecisionType = "strong" | "mixed" | "limited";
-type SeverityType = "manageable" | "elevated" | "severe";
 
 export default function StagePage() {
   const params = useParams<{ stageId: string }>();
@@ -64,7 +67,8 @@ export default function StagePage() {
     );
 
     setScenarioTextShown(
-      previousLinkedResponse?.evaluation?.nextScenarioText || stage.baseScenarioText,
+      previousLinkedResponse?.evaluation?.nextScenarioText ||
+        stage.baseScenarioText,
     );
     setAnswers({});
     setFeedback("");
@@ -77,10 +81,10 @@ export default function StagePage() {
   const isCompletionStage = stage?.id === "complete";
 
   const mergeOverallSeverity = (
-    current?: SeverityType,
-    incoming?: SeverityType,
-  ): SeverityType => {
-    const rank: Record<SeverityType, number> = {
+    current?: ScenarioSeverity,
+    incoming?: ScenarioSeverity,
+  ): ScenarioSeverity => {
+    const rank: Record<ScenarioSeverity, number> = {
       manageable: 1,
       elevated: 2,
       severe: 3,
@@ -93,7 +97,7 @@ export default function StagePage() {
   };
 
   const handleSubmit = async () => {
-    if (!stage) return;
+    if (!stage || isSubmitting || hasSubmitted) return;
 
     const combinedAnswer = Object.values(answers)
       .map((answer) => answer.trim())
@@ -115,7 +119,9 @@ export default function StagePage() {
 
       const res = await fetch("/api/evaluate-stage", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+        },
         body: JSON.stringify({
           stage,
           userAnswer: combinedAnswer,
@@ -180,11 +186,11 @@ export default function StagePage() {
   const handleNextStage = () => {
     if (!stage) return;
 
-    if (isCompletionStage) {
-      const summaryUrl = sessionCode
-        ? `/simulation/demo/summary?session=${sessionCode}`
-        : "/simulation/demo/summary";
+    const summaryUrl = sessionCode
+      ? `/simulation/demo/summary?session=${sessionCode}`
+      : "/simulation/demo/summary";
 
+    if (isCompletionStage || stage.isTerminal) {
       router.push(summaryUrl);
       return;
     }
@@ -194,10 +200,6 @@ export default function StagePage() {
     const nextStageId = currentResponse?.evaluation?.nextStageId;
 
     if (!nextStageId) {
-      const summaryUrl = sessionCode
-        ? `/simulation/demo/summary?session=${sessionCode}`
-        : "/simulation/demo/summary";
-
       router.push(summaryUrl);
       return;
     }
@@ -225,9 +227,7 @@ export default function StagePage() {
           <div className="mb-3 flex flex-wrap gap-2">
             <Badge className="bg-cyan-600 text-white">Simulation</Badge>
             <Badge variant="outline">
-              {isCompletionStage
-                ? "Final Reflection"
-                : `Phase ${stage.phaseNumber}`}
+              {isCompletionStage ? "Final Reflection" : `Phase ${stage.phaseNumber}`}
             </Badge>
             <Badge className="bg-slate-100 text-slate-700">
               {stage.timeframe}
@@ -311,8 +311,8 @@ export default function StagePage() {
                     {isSubmitting
                       ? "Evaluating..."
                       : isCompletionStage
-                        ? "Submit Final Reflection"
-                        : "Submit Response"}
+                      ? "Submit Final Reflection"
+                      : "Submit Response"}
                   </Button>
                 ) : (
                   <Button onClick={handleNextStage}>

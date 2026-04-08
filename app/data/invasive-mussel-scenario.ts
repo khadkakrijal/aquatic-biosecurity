@@ -1,29 +1,33 @@
-import { Scenario } from "@/app/types/simulation";
+import { Scenario, ScenarioStage } from "@/app/types/simulation";
 
 export const invasiveMusselScenario: Scenario = {
   id: "invasive-mussel",
   title: "Invasive Mussel Incursion — Response and Preparedness Exercise",
   slug: "invasive-mussel",
   overview:
-    "An aquatic biosecurity simulation designed to assess operational decision-making during a suspected invasive mussel incursion in a high-risk marina and coastal movement environment. The scenario supports quiet AI evaluation, consequence-based branching, stage-by-stage feedback, and an end summary focused on strengths, recurring gaps, and operational consequences.",
-  version: 2,
+    "An aquatic biosecurity simulation designed to assess operational decision-making during a suspected invasive mussel incursion in a high-risk marina and coastal movement environment. The scenario uses forward-only branching, stage-by-stage feedback, and a final summary focused on strengths, recurring gaps, and operational consequences.",
+  version: 3,
   isActive: true,
   category: "aquatic-biosecurity",
-
+  adminMeta: {
+    isPublished: true,
+    version: 3,
+  },
   stages: [
     {
       id: "p1",
       phaseNumber: 1,
       title: "Detection and Immediate Response",
       timeframe: "0–24 Hours",
+      branchFamily: "main",
       baseScenarioText:
-        "A local boater has reported dense clusters of small bivalves attached to vessel hulls, marina pylons, ropes, mooring lines, and submerged infrastructure within a busy recreational marina. Images suggest a suspected exotic mussel species with high invasive potential. Laboratory confirmation is pending, but the organism appears capable of rapid establishment, heavy fouling, and dispersal through planktonic larvae. The marina supports frequent vessel movement, contractor activity, and shared equipment use, creating an immediate risk of spread to nearby facilities and waterways. At this stage, the incident is still potentially containable, but only if early action is prompt, coordinated, and practical.",
+        "A local boater reports dense clusters of small bivalves attached to vessel hulls, marina pylons, ropes, mooring lines, and submerged infrastructure within a busy marina. Images suggest a suspected exotic mussel species with high invasive potential. Laboratory confirmation is pending, but the organism appears capable of rapid establishment, heavy fouling, and dispersal through planktonic larvae. The marina has frequent vessel movement, contractor activity, and shared equipment use, creating an immediate risk of spread.",
       criteria: [
         {
           id: "p1c1",
-          text: "Immediately report the suspect detection through the relevant aquatic biosecurity authority and formal escalation pathway",
+          text: "Report the suspect detection immediately through the relevant aquatic biosecurity authority and escalation pathway",
           consequence:
-            "Delayed reporting may reduce early coordination, slow decision-making, and increase the risk of spread before broader controls are established.",
+            "Delayed reporting reduces early coordination and increases the chance of spread before broader controls are established.",
           theme: "Protocols",
           required: true,
           weight: 3,
@@ -33,32 +37,15 @@ export const invasiveMusselScenario: Scenario = {
             "authority",
             "biosecurity",
             "escalate",
-            "formal reporting",
             "incident notification",
+            "formal reporting",
           ],
         },
         {
           id: "p1c2",
-          text: "Activate incident coordination arrangements and establish early response governance",
+          text: "Apply immediate containment and movement restrictions around the suspect site while confirmation is pending",
           consequence:
-            "Without early coordination, response actions may become fragmented, inconsistent, and slower to scale.",
-          theme: "Protocols",
-          required: true,
-          weight: 3,
-          keywords: [
-            "incident management",
-            "incident control",
-            "coordination",
-            "ICC",
-            "BIMS",
-            "governance",
-          ],
-        },
-        {
-          id: "p1c3",
-          text: "Implement immediate containment and movement restrictions around the suspect site while confirmation is pending",
-          consequence:
-            "If vessels, equipment, and infrastructure continue to move unmanaged, the likelihood of linked infestations increases rapidly.",
+            "If vessels, equipment, and infrastructure continue moving unmanaged, the likelihood of linked infestations rises quickly.",
           theme: "Constraints",
           required: true,
           weight: 3,
@@ -66,46 +53,43 @@ export const invasiveMusselScenario: Scenario = {
             "containment",
             "movement restriction",
             "movement control",
-            "quarantine",
             "restrict access",
-            "control zone",
+            "quarantine",
             "stop movement",
           ],
         },
         {
-          id: "p1c4",
-          text: "Commence delimiting surveillance planning at and around the suspect location",
+          id: "p1c3",
+          text: "Commence early surveillance and delimiting planning at and around the suspect location",
           consequence:
-            "If early surveillance planning is delayed, the real spread footprint may be underestimated and later response phases may become more complex.",
+            "If surveillance planning is delayed, the true spread footprint may be underestimated.",
           theme: "Data",
           required: true,
-          weight: 2,
+          weight: 3,
           keywords: [
             "surveillance",
-            "delimiting",
-            "inspection",
             "sampling",
-            "survey",
-            "site assessment",
+            "inspection",
+            "delimiting",
             "monitoring",
+            "survey",
           ],
         },
         {
-          id: "p1c5",
-          text: "Notify and engage immediate stakeholders such as marina operators, vessel owners, contractors, and local authorities",
+          id: "p1c4",
+          text: "Engage immediate stakeholders and provide practical early guidance",
           consequence:
-            "If stakeholders are not engaged early, awareness, cooperation, and compliance may weaken.",
+            "If stakeholders are not informed early, awareness, cooperation, and compliance may weaken.",
           theme: "Stakeholders",
           required: false,
           weight: 1,
           keywords: [
             "stakeholders",
             "marina operator",
-            "industry",
-            "council",
             "boaters",
-            "vessel owners",
             "contractors",
+            "industry",
+            "guidance",
           ],
         },
       ],
@@ -115,141 +99,134 @@ export const invasiveMusselScenario: Scenario = {
           text: "What immediate actions would you take in the first 24 hours after this suspected aquatic pest detection?",
           theme: "Protocols",
           placeholder:
-            "Describe the immediate reporting, containment, coordination, and surveillance actions you would initiate...",
+            "Describe your reporting, containment, surveillance, and immediate coordination actions...",
         },
         {
           id: "p1q2",
-          text: "Who would you notify, and what urgent measures would you take to reduce spread while species confirmation is still pending?",
+          text: "Who would you notify, and what urgent measures would you use to reduce spread while confirmation is still pending?",
           theme: "Communication",
           placeholder:
-            "Explain how you would manage reporting, stakeholder communication, and early movement controls...",
+            "Explain how you would manage communication, movement controls, and practical guidance...",
         },
       ],
       passingRules: {
-        minScore: 6,
-        requiredCriteriaIds: ["p1c1", "p1c2", "p1c3", "p1c4"],
+        minScore: 7,
+        requiredCriteriaIds: ["p1c1", "p1c2", "p1c3"],
       },
       nextStageMap: {
-        byMissingRequiredPriority: ["p1c1", "p1c3", "p1c4"],
+        byMissingRequiredPriority: ["p1c1", "p1c2", "p1c3"],
         byMissingRequired: {
-          p1c1: "p2-reporting-failure",
-          p1c3: "p2-containment-failure",
-          p1c4: "p2-surveillance-failure",
+          p1c1: "p2a-reporting-pressure",
+          p1c2: "p2b-containment-pressure",
+          p1c3: "p2c-surveillance-pressure",
         },
-        strong: "p2-controlled",
-        mixed: "p2-controlled",
-        limited: "p2-surveillance-failure",
-        fallback: "p2-controlled",
-      },
-      adminMeta: {
-        isPublished: true,
-        version: 2,
+        strong: "p2-main",
+        mixed: "p2-main",
+        limited: "p2c-surveillance-pressure",
+        fallback: "p2-main",
       },
     },
 
     {
-      id: "p2-controlled",
+      id: "p2-main",
       phaseNumber: 2,
       title: "Early Response — Controlled Progression",
       timeframe: "24–72 Hours",
+      branchFamily: "main",
       baseScenarioText:
-        "Early reporting and escalation have occurred, preliminary coordination is in place, and the incident remains potentially manageable. Diagnostic results are still pending. Ten high-risk linked locations have been identified through vessel movement, contractor activity, hull-cleaning histories, and shared marina infrastructure. Five lower-risk linked locations have also been noted. Containment is active at the suspect site, but inspections and structured surveillance at linked sites now need to accelerate before the spread picture worsens.",
+        "Early reporting, containment, and initial surveillance have occurred. Diagnostic confirmation is still pending, but the incident remains potentially manageable. Linked sites, vessel histories, and shared equipment routes have been identified. The response now needs structured coordination, wider surveillance, and sustained stakeholder engagement before the spread picture worsens.",
       criteria: [
         {
-          id: "p2cc1",
-          text: "Implement structured surveillance of high-risk and lower-risk linked sites",
+          id: "p2m1",
+          text: "Establish and operationalise early incident coordination arrangements",
           consequence:
-            "If inspections are delayed, additional infested sites may remain unidentified during a critical early window.",
+            "If coordination remains weak, field, surveillance, and communication actions may become fragmented.",
+          theme: "Protocols",
+          required: true,
+          weight: 3,
+          keywords: [
+            "incident coordination",
+            "incident management",
+            "ICC",
+            "coordination",
+            "governance",
+            "control centre",
+          ],
+        },
+        {
+          id: "p2m2",
+          text: "Expand surveillance to linked sites and likely spread pathways",
+          consequence:
+            "If linked sites are not checked early, additional infestations may remain unidentified during a critical window.",
           theme: "Data",
           required: true,
           weight: 3,
           keywords: [
-            "surveillance",
+            "expand surveillance",
+            "linked sites",
             "inspection",
-            "linked sites",
-            "high-risk",
-            "delimiting",
             "sampling",
+            "delimiting",
+            "pathways",
           ],
         },
         {
-          id: "p2cc2",
-          text: "Strengthen containment and movement controls beyond the index site where justified by risk",
+          id: "p2m3",
+          text: "Provide practical guidance to affected stakeholders and maintain cooperation",
           consequence:
-            "If controls remain too narrow, spread may continue through linked vessels, infrastructure, and equipment.",
-          theme: "Constraints",
-          required: true,
-          weight: 3,
-          keywords: [
-            "containment",
-            "movement controls",
-            "linked sites",
-            "quarantine",
-            "restricted access",
-          ],
-        },
-        {
-          id: "p2cc3",
-          text: "Engage industry and local stakeholders with practical guidance and expectations",
-          consequence:
-            "If communication is incomplete, confusion and inconsistent compliance may emerge.",
+            "If messaging is incomplete, confusion and inconsistent compliance may emerge.",
           theme: "Stakeholders",
           required: true,
           weight: 2,
           keywords: [
-            "industry engagement",
             "guidance",
             "stakeholders",
             "operators",
             "communication",
+            "industry engagement",
+            "cooperation",
           ],
         },
       ],
       questions: [
         {
-          id: "p2ccq1",
-          text: "How would you organise surveillance and prioritise linked sites at this stage?",
-          theme: "Data",
+          id: "p2mq1",
+          text: "How would you organise the early response once the incident remains potentially manageable but linked risks are growing?",
+          theme: "Protocols",
           placeholder:
-            "Explain your inspection, sampling, and prioritisation approach...",
-        },
-        {
-          id: "p2ccq2",
-          text: "How would you expand controls and guidance while maintaining cooperation?",
-          theme: "Communication",
-          placeholder:
-            "Explain your containment, movement-control, and stakeholder approach...",
+            "Explain your coordination, surveillance expansion, and stakeholder approach...",
         },
       ],
       passingRules: {
         minScore: 6,
-        requiredCriteriaIds: ["p2cc1", "p2cc2", "p2cc3"],
+        requiredCriteriaIds: ["p2m1", "p2m2", "p2m3"],
       },
       nextStageMap: {
-        byMissingRequiredPriority: ["p2cc1", "p2cc2", "p2cc3"],
+        byMissingRequiredPriority: ["p2m2", "p2m1", "p2m3"],
         byMissingRequired: {
-          p2cc1: "p3-surveillance-escalation",
-          p2cc2: "p3-containment-escalation",
-          p2cc3: "p3-stakeholder-escalation",
+          p2m1: "p3c-icc-coordination-pressure",
+          p2m2: "p3a-surveillance-tracing-pressure",
+          p2m3: "p3d-industry-trust-pressure",
         },
-        strong: "p3-controlled",
-        mixed: "p3-controlled",
-        limited: "p3-surveillance-escalation",
-        fallback: "p3-controlled",
+        strong: "p3-main",
+        mixed: "p3-main",
+        limited: "p3a-surveillance-tracing-pressure",
+        fallback: "p3-main",
       },
     },
 
     {
-      id: "p2-reporting-failure",
+      id: "p2a-reporting-pressure",
       phaseNumber: 2,
       title: "Early Response — Consequence of Delayed Reporting",
       timeframe: "24–72 Hours",
+      branchFamily: "reporting",
       baseScenarioText:
-        "Formal reporting and escalation were delayed while waiting for greater certainty. During that time, the situation expanded. Multiple suspect or infected sites are now emerging across the boating network, including linked activity beyond the immediate marina. Interstate or cross-jurisdictional concerns are now being raised through vessel and equipment movements. Coordination pressure is increasing, national-level scrutiny is growing, and industry confidence is beginning to decline.",
+        "Formal reporting and escalation were delayed while waiting for greater certainty. During that time, the situation expanded across linked vessel movements and marina activity. Cross-jurisdiction concerns are now emerging, coordination pressure is increasing, and industry confidence is beginning to decline.",
       criteria: [
         {
-          id: "p2rf1",
-          text: "Stabilise coordination and formalise interagency or cross-jurisdictional engagement",
+          id: "p2a1",
+          text: "Stabilise strategic coordination and formalise multi-agency engagement",
           consequence:
             "If coordination remains weak, delays and conflicting actions may worsen the incident.",
           theme: "Protocols",
@@ -259,13 +236,13 @@ export const invasiveMusselScenario: Scenario = {
             "coordination",
             "interagency",
             "jurisdiction",
-            "escalation",
             "governance",
+            "escalation",
           ],
         },
         {
-          id: "p2rf2",
-          text: "Escalate tracing and movement analysis to identify linked pathways quickly",
+          id: "p2a2",
+          text: "Intensify tracing and pathway analysis quickly",
           consequence:
             "If tracing is not intensified, hidden spread pathways may continue to drive expansion.",
           theme: "Data",
@@ -273,83 +250,169 @@ export const invasiveMusselScenario: Scenario = {
           weight: 3,
           keywords: [
             "tracing",
-            "movement analysis",
             "pathways",
+            "movement analysis",
             "mapping",
             "history",
           ],
         },
         {
-          id: "p2rf3",
-          text: "Apply stronger containment and movement controls to reduce further expansion",
+          id: "p2a3",
+          text: "Rebuild confidence through practical stakeholder communication",
           consequence:
-            "If movement restrictions remain too weak, the spread may accelerate.",
-          theme: "Constraints",
+            "If confidence is not repaired, non-compliance and criticism may worsen.",
+          theme: "Communication",
           required: true,
           weight: 2,
           keywords: [
-            "containment",
-            "movement controls",
-            "restrictions",
-            "enforcement",
+            "confidence",
+            "communication",
+            "stakeholder updates",
+            "guidance",
+            "trust",
           ],
         },
       ],
       questions: [
         {
-          id: "p2rfq1",
-          text: "How would you stabilise the response after delayed escalation and growing spread concerns?",
+          id: "p2aq1",
+          text: "How would you stabilise the response after delayed escalation and rising spread concerns?",
           theme: "Protocols",
           placeholder:
-            "Describe your coordination, tracing, and control priorities...",
-        },
-        {
-          id: "p2rfq2",
-          text: "What practical actions would you take to restore confidence and reduce further spread?",
-          theme: "Communication",
-          placeholder:
-            "Explain your containment, communication, and stakeholder approach...",
+            "Describe your coordination, tracing, and confidence-restoring actions...",
         },
       ],
       passingRules: {
         minScore: 6,
-        requiredCriteriaIds: ["p2rf1", "p2rf2", "p2rf3"],
+        requiredCriteriaIds: ["p2a1", "p2a2", "p2a3"],
       },
       nextStageMap: {
-        strong: "p3-reporting-escalation",
-        mixed: "p3-reporting-escalation",
-        limited: "p3-reporting-escalation",
-        fallback: "p3-reporting-escalation",
+        byMissingRequiredPriority: ["p2a2", "p2a1", "p2a3"],
+        byMissingRequired: {
+          p2a1: "p3c-icc-coordination-pressure",
+          p2a2: "p3a-surveillance-tracing-pressure",
+          p2a3: "p3d-industry-trust-pressure",
+        },
+        strong: "p3c-icc-coordination-pressure",
+        mixed: "p3c-icc-coordination-pressure",
+        limited: "p3c-icc-coordination-pressure",
+        fallback: "p3c-icc-coordination-pressure",
       },
     },
 
     {
-      id: "p2-surveillance-failure",
+      id: "p2b-containment-pressure",
+      phaseNumber: 2,
+      title: "Early Response — Consequence of Weak Containment",
+      timeframe: "24–72 Hours",
+      branchFamily: "containment",
+      baseScenarioText:
+        "Initial detection and escalation occurred, but containment remained too limited. Controls were not broadened early enough beyond the suspect site, and movement continued through linked vessels, equipment, and contractor activity. Multiple suspect sites are now emerging and the response is under greater scrutiny.",
+      criteria: [
+        {
+          id: "p2b1",
+          text: "Apply broader and more enforceable movement controls across linked sites and vectors",
+          consequence:
+            "If containment remains inconsistent, new infestations may continue to emerge.",
+          theme: "Constraints",
+          required: true,
+          weight: 3,
+          keywords: [
+            "movement controls",
+            "enforcement",
+            "containment",
+            "quarantine",
+            "restrictions",
+          ],
+        },
+        {
+          id: "p2b2",
+          text: "Improve stakeholder guidance and compliance expectations",
+          consequence:
+            "If communication remains inconsistent, reporting and cooperation may weaken further.",
+          theme: "Stakeholders",
+          required: true,
+          weight: 2,
+          keywords: [
+            "guidance",
+            "stakeholders",
+            "expectations",
+            "compliance",
+            "communication",
+          ],
+        },
+        {
+          id: "p2b3",
+          text: "Continue tracing and surveillance to identify where movement before controls caused spread",
+          consequence:
+            "If tracing and surveillance do not catch up, the true footprint may continue expanding.",
+          theme: "Data",
+          required: true,
+          weight: 2,
+          keywords: [
+            "tracing",
+            "surveillance",
+            "movement history",
+            "spread footprint",
+          ],
+        },
+      ],
+      questions: [
+        {
+          id: "p2bq1",
+          text: "How would you recover from weak initial containment and reduce the risk of continued spread?",
+          theme: "Constraints",
+          placeholder:
+            "Describe your movement-control, enforcement, tracing, and communication actions...",
+        },
+      ],
+      passingRules: {
+        minScore: 6,
+        requiredCriteriaIds: ["p2b1", "p2b2", "p2b3"],
+      },
+      nextStageMap: {
+        byMissingRequiredPriority: ["p2b1", "p2b3", "p2b2"],
+        byMissingRequired: {
+          p2b1: "p3b-containment-compliance-pressure",
+          p2b2: "p3d-industry-trust-pressure",
+          p2b3: "p3a-surveillance-tracing-pressure",
+        },
+        strong: "p3b-containment-compliance-pressure",
+        mixed: "p3b-containment-compliance-pressure",
+        limited: "p3b-containment-compliance-pressure",
+        fallback: "p3b-containment-compliance-pressure",
+      },
+    },
+
+    {
+      id: "p2c-surveillance-pressure",
       phaseNumber: 2,
       title: "Early Response — Consequence of Weak Surveillance",
       timeframe: "24–72 Hours",
+      branchFamily: "surveillance",
       baseScenarioText:
-        "Early surveillance was not prioritised strongly enough. As a result, several linked locations went unchecked during the critical early window, and suspect infestations are now being identified reactively rather than proactively. Some infected sites may have remained active for longer than expected, and the extent of spread is becoming less clear. The incident control function is under pressure because situational awareness is fragmented and prioritisation is becoming more reactive.",
+        "Early surveillance was not prioritised strongly enough. Several linked locations went unchecked during the critical early window, and suspect infestations are now being identified reactively rather than proactively. Situational awareness is fragmented and prioritisation is becoming more reactive.",
       criteria: [
         {
-          id: "p2sf1",
+          id: "p2c1",
           text: "Rapidly scale structured surveillance across high-risk linked sites",
           consequence:
-            "If surveillance remains delayed, more infested sites may stay undetected and continue operating.",
+            "If surveillance remains delayed, more infested sites may stay undetected.",
           theme: "Data",
           required: true,
           weight: 3,
           keywords: [
             "surveillance",
             "inspection",
-            "high-risk",
-            "rapid scale-up",
             "sampling",
+            "high-risk",
+            "scale up",
+            "linked sites",
           ],
         },
         {
-          id: "p2sf2",
-          text: "Improve incident coordination and information sharing to restore situational awareness",
+          id: "p2c2",
+          text: "Improve coordination and information sharing to restore situational awareness",
           consequence:
             "If coordination remains fragmented, inspection and containment decisions may continue to lag.",
           theme: "Protocols",
@@ -358,13 +421,13 @@ export const invasiveMusselScenario: Scenario = {
           keywords: [
             "coordination",
             "ICC",
-            "situation awareness",
+            "situational awareness",
             "information sharing",
           ],
         },
         {
-          id: "p2sf3",
-          text: "Reinforce containment and stakeholder guidance to reduce further unmanaged movement",
+          id: "p2c3",
+          text: "Reinforce containment and stakeholder guidance to reduce unmanaged movement",
           consequence:
             "If controls and communication remain weak, non-compliance and continued spread may increase.",
           theme: "Communication",
@@ -381,126 +444,42 @@ export const invasiveMusselScenario: Scenario = {
       ],
       questions: [
         {
-          id: "p2sfq1",
+          id: "p2cq1",
           text: "How would you recover from delayed surveillance and restore control of the situation?",
           theme: "Data",
           placeholder:
             "Describe your surveillance, coordination, and risk-prioritisation actions...",
         },
-        {
-          id: "p2sfq2",
-          text: "How would you reduce further spread while confidence in the spread picture is still low?",
-          theme: "Communication",
-          placeholder:
-            "Explain your containment, compliance, and stakeholder actions...",
-        },
       ],
       passingRules: {
         minScore: 6,
-        requiredCriteriaIds: ["p2sf1", "p2sf2", "p2sf3"],
+        requiredCriteriaIds: ["p2c1", "p2c2", "p2c3"],
       },
       nextStageMap: {
-        strong: "p3-surveillance-escalation",
-        mixed: "p3-surveillance-escalation",
-        limited: "p3-surveillance-escalation",
-        fallback: "p3-surveillance-escalation",
+        byMissingRequiredPriority: ["p2c1", "p2c2", "p2c3"],
+        byMissingRequired: {
+          p2c1: "p3a-surveillance-tracing-pressure",
+          p2c2: "p3c-icc-coordination-pressure",
+          p2c3: "p3d-industry-trust-pressure",
+        },
+        strong: "p3a-surveillance-tracing-pressure",
+        mixed: "p3a-surveillance-tracing-pressure",
+        limited: "p3a-surveillance-tracing-pressure",
+        fallback: "p3a-surveillance-tracing-pressure",
       },
     },
 
     {
-      id: "p2-containment-failure",
-      phaseNumber: 2,
-      title: "Early Response — Consequence of Weak Containment",
-      timeframe: "24–72 Hours",
-      baseScenarioText:
-        "Initial detection and escalation occurred, but containment remained too limited. Controls were not broadened early enough beyond the suspect site, and movement continued through linked vessels, equipment, and support activity. Multiple suspect sites are now emerging, including potential spread beyond the local marina network. Stakeholder frustration is increasing because restrictions appear inconsistent, and the response is now operating under greater scrutiny.",
-      criteria: [
-        {
-          id: "p2cf1",
-          text: "Apply broader and more enforceable movement controls across linked sites and vectors",
-          consequence:
-            "If containment remains inconsistent, new infestations may continue to emerge.",
-          theme: "Constraints",
-          required: true,
-          weight: 3,
-          keywords: [
-            "movement controls",
-            "containment",
-            "linked sites",
-            "enforcement",
-            "quarantine",
-          ],
-        },
-        {
-          id: "p2cf2",
-          text: "Improve stakeholder guidance and expectations to reduce confusion and poor compliance",
-          consequence:
-            "If communication remains inconsistent, reporting and cooperation may weaken further.",
-          theme: "Stakeholders",
-          required: true,
-          weight: 2,
-          keywords: [
-            "stakeholders",
-            "guidance",
-            "communication",
-            "expectations",
-            "compliance",
-          ],
-        },
-        {
-          id: "p2cf3",
-          text: "Continue tracing and surveillance to identify where movement before controls may have caused spread",
-          consequence:
-            "If tracing and surveillance do not catch up, the real footprint may continue to expand.",
-          theme: "Data",
-          required: true,
-          weight: 2,
-          keywords: [
-            "tracing",
-            "surveillance",
-            "movement history",
-            "spread footprint",
-          ],
-        },
-      ],
-      questions: [
-        {
-          id: "p2cfq1",
-          text: "How would you recover from weak initial containment and reduce the risk of continued spread?",
-          theme: "Constraints",
-          placeholder:
-            "Describe your movement-control, enforcement, tracing, and coordination actions...",
-        },
-        {
-          id: "p2cfq2",
-          text: "How would you improve stakeholder cooperation where restrictions have already been seen as inconsistent?",
-          theme: "Stakeholders",
-          placeholder:
-            "Explain your communication, compliance, and engagement approach...",
-        },
-      ],
-      passingRules: {
-        minScore: 6,
-        requiredCriteriaIds: ["p2cf1", "p2cf2", "p2cf3"],
-      },
-      nextStageMap: {
-        strong: "p3-containment-escalation",
-        mixed: "p3-containment-escalation",
-        limited: "p3-containment-escalation",
-        fallback: "p3-containment-escalation",
-      },
-    },
-
-    {
-      id: "p3-controlled",
+      id: "p3-main",
       phaseNumber: 3,
       title: "Escalation with Controlled Response",
       timeframe: "72 Hours–5 Days",
+      branchFamily: "main",
       baseScenarioText:
-        "The mussel is now likely confirmed as exotic and a formal sustained response is taking shape. Surveillance and tracing have progressed strongly across the high-risk network, linked pathways are becoming clearer, and containment measures are being applied more consistently. An incident coordination structure is active, and a draft response plan is being developed. The incident remains serious, but operational control is still realistic if momentum is maintained.",
+        "The mussel is now likely confirmed as exotic and a sustained response is taking shape. Surveillance and tracing have progressed well, linked pathways are becoming clearer, containment measures are being applied more consistently, and a draft response plan is being prepared. The incident remains serious, but operational control is still realistic if momentum is maintained.",
       criteria: [
         {
-          id: "p3c1",
+          id: "p3m1",
           text: "Complete surveillance and trace mapping to define the spread picture more confidently",
           consequence:
             "If surveillance and tracing remain incomplete, confidence in the true extent of spread may weaken.",
@@ -512,143 +491,317 @@ export const invasiveMusselScenario: Scenario = {
             "tracing",
             "mapping",
             "pathways",
-            "linked sites",
+            "spread picture",
           ],
         },
         {
-          id: "p3c2",
-          text: "Ensure compliance and enforcement around movement restrictions and biosecurity controls",
+          id: "p3m2",
+          text: "Prepare approvals, disposal, and operational scale-up planning",
           consequence:
-            "If compliance weakens, the incident may expand despite earlier progress.",
+            "If planning lags, later response actions may become delayed and fragmented.",
           theme: "Constraints",
           required: true,
           weight: 2,
           keywords: [
-            "compliance",
-            "enforcement",
-            "movement restrictions",
-            "controls",
+            "approvals",
+            "disposal",
+            "planning",
+            "operational scale-up",
+            "logistics",
           ],
         },
         {
-          id: "p3c3",
-          text: "Advance response planning for removal, disposal, approvals, and operational scale-up",
+          id: "p3m3",
+          text: "Stabilise incident coordination and keep stakeholders aligned under pressure",
           consequence:
-            "If planning lags, later response actions may become delayed and fragmented.",
+            "If alignment weakens, confidence and operational momentum may fall.",
           theme: "Protocols",
           required: true,
           weight: 2,
           keywords: [
+            "coordination",
+            "alignment",
+            "stakeholders",
             "response plan",
-            "removal",
-            "disposal",
-            "approvals",
-            "operations",
+            "governance",
           ],
         },
       ],
       questions: [
         {
-          id: "p3cq1",
+          id: "p3mq1",
           text: "What would you prioritise to keep the response controlled as the incident escalates?",
           theme: "Protocols",
           placeholder:
-            "Describe your surveillance, enforcement, planning, and coordination actions...",
-        },
-        {
-          id: "p3cq2",
-          text: "How would you prepare the response for safe removal, disposal, and sustained operational pressure?",
-          theme: "Constraints",
-          placeholder:
-            "Explain your approvals, logistics, and risk-management approach...",
+            "Describe your surveillance, planning, approvals, and coordination actions...",
         },
       ],
       passingRules: {
         minScore: 6,
-        requiredCriteriaIds: ["p3c1", "p3c2", "p3c3"],
+        requiredCriteriaIds: ["p3m1", "p3m2", "p3m3"],
       },
       nextStageMap: {
-        byMissingRequiredPriority: ["p3c3", "p3c2", "p3c1"],
+        byMissingRequiredPriority: ["p3m1", "p3m2", "p3m3"],
         byMissingRequired: {
-          p3c1: "p4a-surveillance-tracing-pressure",
-          p3c2: "p4b-removal-disposal-pressure",
-          p3c3: "p4c-approval-orc-pressure",
+          p3m1: "p4b-surveillance-pressure",
+          p3m2: "p4a-disposal-pressure",
+          p3m3: "p4c-approval-orc-pressure",
         },
-        strong: "p4-controlled",
-        mixed: "p4-controlled",
-        limited: "p4a-surveillance-tracing-pressure",
-        fallback: "p4-controlled",
+        strong: "p4-main",
+        mixed: "p4-main",
+        limited: "p4b-surveillance-pressure",
+        fallback: "p4-main",
       },
     },
 
     {
-      id: "p3-reporting-escalation",
+      id: "p3a-surveillance-tracing-pressure",
       phaseNumber: 3,
-      title: "Escalation — Consequence of Delayed National-Level Coordination",
+      title: "Escalation — Surveillance and Tracing Pressure",
       timeframe: "72 Hours–5 Days",
+      branchFamily: "surveillance",
       baseScenarioText:
-        "Earlier delays in formal escalation have created ongoing coordination strain. Multiple linked sites are now involved, cross-jurisdictional questions are slowing decisions, and confidence in the response is under pressure. Tracing, containment, and stakeholder management are all competing for attention, while national-level scrutiny is increasing.",
+        "Weak earlier detection and incomplete pathway mapping have allowed additional suspect or infected sites to emerge under pressure. The response now has less confidence in the defined spread footprint, and some linked sites may have remained active longer than intended before controls were applied.",
       criteria: [
         {
-          id: "p3re1",
-          text: "Strengthen strategic coordination and decision-making alignment",
+          id: "p3a1",
+          text: "Accelerate targeted inspections and sampling to close detection gaps",
+          consequence:
+            "If surveillance gaps remain open, more late detections may occur.",
+          theme: "Data",
+          required: true,
+          weight: 3,
+          keywords: [
+            "inspection",
+            "sampling",
+            "targeted surveillance",
+            "detection gaps",
+            "high-risk",
+          ],
+        },
+        {
+          id: "p3a2",
+          text: "Improve prioritisation and containment where delayed detection has increased risk",
+          consequence:
+            "If prioritisation remains weak, resources may be misallocated and spread may continue.",
+          theme: "Constraints",
+          required: true,
+          weight: 2,
+          keywords: [
+            "prioritisation",
+            "containment",
+            "movement controls",
+            "high-risk",
+            "risk",
+          ],
+        },
+        {
+          id: "p3a3",
+          text: "Explain uncertainty clearly to stakeholders while maintaining cooperation",
+          consequence:
+            "If uncertainty is not explained well, trust and cooperation may decline.",
+          theme: "Communication",
+          required: true,
+          weight: 2,
+          keywords: [
+            "uncertainty",
+            "communication",
+            "stakeholders",
+            "priorities",
+            "guidance",
+          ],
+        },
+      ],
+      questions: [
+        {
+          id: "p3aq1",
+          text: "How would you recover from late detections and improve confidence in the spread picture?",
+          theme: "Data",
+          placeholder:
+            "Describe your surveillance, prioritisation, containment, and communication response...",
+        },
+      ],
+      passingRules: {
+        minScore: 5,
+        requiredCriteriaIds: ["p3a1", "p3a2", "p3a3"],
+      },
+      nextStageMap: {
+        byMissingRequiredPriority: ["p3a1", "p3a2", "p3a3"],
+        byMissingRequired: {
+          p3a1: "p4b-surveillance-pressure",
+          p3a2: "p4a-disposal-pressure",
+          p3a3: "p4c-approval-orc-pressure",
+        },
+        strong: "p4b-surveillance-pressure",
+        mixed: "p4b-surveillance-pressure",
+        limited: "p4b-surveillance-pressure",
+        fallback: "p4b-surveillance-pressure",
+      },
+    },
+
+    {
+      id: "p3b-containment-compliance-pressure",
+      phaseNumber: 3,
+      title: "Escalation — Containment and Compliance Pressure",
+      timeframe: "72 Hours–5 Days",
+      branchFamily: "containment",
+      baseScenarioText:
+        "Earlier containment weaknesses have contributed to ongoing spread concerns across linked vessels, equipment, and operational activity. The response now faces greater pressure to enforce movement controls, rebuild compliance, and manage the consequences of inconsistent earlier restrictions.",
+      criteria: [
+        {
+          id: "p3b1",
+          text: "Strengthen enforceable containment and movement controls",
+          consequence:
+            "If containment remains inconsistent, spread may keep expanding through operational pathways.",
+          theme: "Constraints",
+          required: true,
+          weight: 3,
+          keywords: [
+            "enforcement",
+            "containment",
+            "movement controls",
+            "restrictions",
+            "compliance",
+          ],
+        },
+        {
+          id: "p3b2",
+          text: "Improve tracing and surveillance to understand where movement before controls created risk",
+          consequence:
+            "If tracing remains incomplete, the extent of spread may stay uncertain.",
+          theme: "Data",
+          required: true,
+          weight: 2,
+          keywords: [
+            "tracing",
+            "surveillance",
+            "movement history",
+            "pathways",
+            "risk",
+          ],
+        },
+        {
+          id: "p3b3",
+          text: "Repair stakeholder confidence through clearer and more consistent guidance",
+          consequence:
+            "If communication remains patchy, cooperation and reporting may weaken.",
+          theme: "Stakeholders",
+          required: true,
+          weight: 2,
+          keywords: [
+            "guidance",
+            "confidence",
+            "stakeholders",
+            "communication",
+            "consistency",
+          ],
+        },
+      ],
+      questions: [
+        {
+          id: "p3bq1",
+          text: "How would you regain control after weak early containment increased the complexity of the response?",
+          theme: "Constraints",
+          placeholder:
+            "Describe your enforcement, tracing, surveillance, and stakeholder actions...",
+        },
+      ],
+      passingRules: {
+        minScore: 5,
+        requiredCriteriaIds: ["p3b1", "p3b2", "p3b3"],
+      },
+      nextStageMap: {
+        byMissingRequiredPriority: ["p3b1", "p3b2", "p3b3"],
+        byMissingRequired: {
+          p3b1: "p4a-disposal-pressure",
+          p3b2: "p4b-surveillance-pressure",
+          p3b3: "p4c-approval-orc-pressure",
+        },
+        strong: "p4a-disposal-pressure",
+        mixed: "p4a-disposal-pressure",
+        limited: "p4a-disposal-pressure",
+        fallback: "p4a-disposal-pressure",
+      },
+    },
+
+    {
+      id: "p3c-icc-coordination-pressure",
+      phaseNumber: 3,
+      title: "Escalation — ICC and Coordination Pressure",
+      timeframe: "72 Hours–5 Days",
+      branchFamily: "coordination",
+      baseScenarioText:
+        "Strategic and operational coordination are under strain. Multiple linked sites are now involved, updates are pulling staff away from operations, and decision-making is slower than intended. Tracing, containment, and stakeholder management are all competing for attention.",
+      criteria: [
+        {
+          id: "p3c1",
+          text: "Strengthen coordination, staffing structure, and decision-making alignment",
           consequence:
             "If alignment is not restored, delays and mixed messaging may continue.",
           theme: "Protocols",
           required: true,
           weight: 3,
           keywords: [
+            "ICC",
             "coordination",
-            "alignment",
+            "staffing",
             "decision-making",
+            "alignment",
             "governance",
           ],
         },
         {
-          id: "p3re2",
-          text: "Accelerate tracing and containment around spread pathways",
+          id: "p3c2",
+          text: "Protect operational flow while maintaining surveillance and containment priorities",
           consequence:
-            "If tracing and containment remain weak, additional spread may continue.",
-          theme: "Data",
-          required: true,
-          weight: 2,
-          keywords: ["tracing", "containment", "pathways", "mapping"],
-        },
-        {
-          id: "p3re3",
-          text: "Rebuild stakeholder confidence through clearer engagement and communication",
-          consequence:
-            "If confidence continues to fall, non-compliance and criticism may worsen.",
-          theme: "Stakeholders",
+            "If operational focus drifts, important field actions may lag behind planning pressure.",
+          theme: "Constraints",
           required: true,
           weight: 2,
           keywords: [
-            "confidence",
-            "stakeholders",
+            "operational flow",
+            "priorities",
+            "surveillance",
+            "containment",
+            "focus",
+          ],
+        },
+        {
+          id: "p3c3",
+          text: "Provide clear updates that maintain confidence without overloading the response",
+          consequence:
+            "If updates are poorly managed, staff time and stakeholder trust may both suffer.",
+          theme: "Communication",
+          required: true,
+          weight: 2,
+          keywords: [
+            "updates",
             "communication",
-            "engagement",
+            "confidence",
+            "briefings",
+            "stakeholder trust",
           ],
         },
       ],
       questions: [
         {
-          id: "p3req1",
-          text: "How would you restore coordination and stabilise the response after earlier escalation delays?",
+          id: "p3cq1",
+          text: "How would you stabilise coordination where strategic pressure is slowing operational delivery?",
           theme: "Protocols",
           placeholder:
-            "Describe your coordination, containment, and stakeholder actions...",
+            "Explain your staffing, coordination, prioritisation, and update-management actions...",
         },
       ],
       passingRules: {
         minScore: 5,
-        requiredCriteriaIds: ["p3re1", "p3re2", "p3re3"],
+        requiredCriteriaIds: ["p3c1", "p3c2", "p3c3"],
       },
       nextStageMap: {
-        byMissingRequiredPriority: ["p3re1", "p3re2", "p3re3"],
+        byMissingRequiredPriority: ["p3c1", "p3c2", "p3c3"],
         byMissingRequired: {
-          p3re1: "p4c-approval-orc-pressure",
-          p3re2: "p4a-surveillance-tracing-pressure",
-          p3re3: "p4c-approval-orc-pressure",
+          p3c1: "p4c-approval-orc-pressure",
+          p3c2: "p4a-disposal-pressure",
+          p3c3: "p4c-approval-orc-pressure",
         },
         strong: "p4c-approval-orc-pressure",
         mixed: "p4c-approval-orc-pressure",
@@ -658,182 +811,32 @@ export const invasiveMusselScenario: Scenario = {
     },
 
     {
-      id: "p3-surveillance-escalation",
+      id: "p3d-industry-trust-pressure",
       phaseNumber: 3,
-      title: "Escalation — Consequence of Delayed Detection",
+      title: "Escalation — Industry Trust and Stakeholder Pressure",
       timeframe: "72 Hours–5 Days",
+      branchFamily: "trust",
       baseScenarioText:
-        "Weak early surveillance has allowed additional suspect or infected sites to emerge through delayed discovery. The response now has less confidence in the defined spread footprint, and some linked sites may have operated longer than intended before controls were applied. The situation is more reactive, and operational pressure is growing.",
+        "Operational work is continuing, but stakeholder engagement has not kept pace. Confusion is growing among marina operators, vessel owners, contractors, and related industries. Reporting and compliance are becoming less consistent as expectations are not being managed clearly.",
       criteria: [
         {
-          id: "p3se1",
-          text: "Accelerate targeted inspections and sampling to close detection gaps",
-          consequence:
-            "If surveillance gaps remain open, more late detections may occur.",
-          theme: "Data",
-          required: true,
-          weight: 3,
-          keywords: [
-            "inspections",
-            "sampling",
-            "surveillance",
-            "detection gaps",
-          ],
-        },
-        {
-          id: "p3se2",
-          text: "Improve containment and prioritisation where delayed detection has increased risk",
-          consequence:
-            "If prioritisation remains weak, resources may be misallocated and spread may continue.",
-          theme: "Constraints",
-          required: true,
-          weight: 2,
-          keywords: [
-            "containment",
-            "prioritisation",
-            "risk",
-            "movement controls",
-          ],
-        },
-        {
-          id: "p3se3",
-          text: "Keep stakeholders informed about uncertainty and operational priorities",
-          consequence:
-            "If uncertainty is not explained clearly, trust and cooperation may decline.",
-          theme: "Communication",
-          required: true,
-          weight: 2,
-          keywords: [
-            "uncertainty",
-            "communication",
-            "priorities",
-            "stakeholders",
-          ],
-        },
-      ],
-      questions: [
-        {
-          id: "p3seq1",
-          text: "How would you recover from late detections and improve confidence in the spread picture?",
-          theme: "Data",
-          placeholder:
-            "Describe your surveillance, prioritisation, and communication response...",
-        },
-      ],
-      passingRules: {
-        minScore: 5,
-        requiredCriteriaIds: ["p3se1", "p3se2", "p3se3"],
-      },
-      nextStageMap: {
-        byMissingRequiredPriority: ["p3se1", "p3se2", "p3se3"],
-        byMissingRequired: {
-          p3se1: "p4a-surveillance-tracing-pressure",
-          p3se2: "p4a-surveillance-tracing-pressure",
-          p3se3: "p4c-approval-orc-pressure",
-        },
-        strong: "p4a-surveillance-tracing-pressure",
-        mixed: "p4a-surveillance-tracing-pressure",
-        limited: "p4a-surveillance-tracing-pressure",
-        fallback: "p4a-surveillance-tracing-pressure",
-      },
-    },
-
-    {
-      id: "p3-containment-escalation",
-      phaseNumber: 3,
-      title: "Escalation — Consequence of Weak Early Containment",
-      timeframe: "72 Hours–5 Days",
-      baseScenarioText:
-        "Earlier containment weaknesses have contributed to ongoing spread concerns across linked vessels, equipment, and operational activity. The response now faces greater pressure to enforce movement controls, rebuild confidence, and manage the consequences of inconsistent earlier restrictions.",
-      criteria: [
-        {
-          id: "p3ce1",
-          text: "Strengthen enforceable containment and movement controls",
-          consequence:
-            "If containment remains inconsistent, the spread may keep expanding through operational pathways.",
-          theme: "Constraints",
-          required: true,
-          weight: 3,
-          keywords: [
-            "enforcement",
-            "containment",
-            "movement controls",
-            "restrictions",
-          ],
-        },
-        {
-          id: "p3ce2",
-          text: "Improve tracing and surveillance to understand where movement before controls caused risk",
-          consequence:
-            "If tracing remains incomplete, the extent of spread may stay uncertain.",
-          theme: "Data",
-          required: true,
-          weight: 2,
-          keywords: ["tracing", "surveillance", "movement history", "risk"],
-        },
-        {
-          id: "p3ce3",
-          text: "Repair stakeholder confidence through clearer and more consistent guidance",
-          consequence:
-            "If communication remains patchy, cooperation and reporting may weaken.",
-          theme: "Stakeholders",
-          required: true,
-          weight: 2,
-          keywords: [
-            "confidence",
-            "guidance",
-            "stakeholders",
-            "communication",
-          ],
-        },
-      ],
-      questions: [
-        {
-          id: "p3ceq1",
-          text: "How would you regain control after weak early containment increased the complexity of the response?",
-          theme: "Constraints",
-          placeholder:
-            "Describe your containment, tracing, and stakeholder actions...",
-        },
-      ],
-      passingRules: {
-        minScore: 5,
-        requiredCriteriaIds: ["p3ce1", "p3ce2", "p3ce3"],
-      },
-      nextStageMap: {
-        byMissingRequiredPriority: ["p3ce1", "p3ce2", "p3ce3"],
-        byMissingRequired: {
-          p3ce1: "p4b-removal-disposal-pressure",
-          p3ce2: "p4a-surveillance-tracing-pressure",
-          p3ce3: "p4c-approval-orc-pressure",
-        },
-        strong: "p4b-removal-disposal-pressure",
-        mixed: "p4b-removal-disposal-pressure",
-        limited: "p4b-removal-disposal-pressure",
-        fallback: "p4b-removal-disposal-pressure",
-      },
-    },
-
-    {
-      id: "p3-stakeholder-escalation",
-      phaseNumber: 3,
-      title: "Escalation — Consequence of Weak Stakeholder Engagement",
-      timeframe: "72 Hours–5 Days",
-      baseScenarioText:
-        "Operational coordination is progressing, but stakeholder engagement has not kept pace. Confusion is growing among marina operators, vessel owners, contractors, and affected industries. Reporting and compliance are becoming less consistent, and criticism is increasing as expectations are not being managed clearly.",
-      criteria: [
-        {
-          id: "p3ste1",
+          id: "p3d1",
           text: "Rebuild stakeholder confidence through practical guidance and regular communication",
           consequence:
             "If expectations remain unclear, compliance and reporting may continue to weaken.",
           theme: "Stakeholders",
           required: true,
           weight: 3,
-          keywords: ["stakeholders", "guidance", "communication", "confidence"],
+          keywords: [
+            "guidance",
+            "stakeholders",
+            "confidence",
+            "communication",
+            "regular updates",
+          ],
         },
         {
-          id: "p3ste2",
+          id: "p3d2",
           text: "Support operational compliance with clearer expectations and follow-up",
           consequence:
             "If compliance support remains weak, control measures may be undermined.",
@@ -848,7 +851,7 @@ export const invasiveMusselScenario: Scenario = {
           ],
         },
         {
-          id: "p3ste3",
+          id: "p3d3",
           text: "Keep surveillance and containment priorities aligned with emerging concerns",
           consequence:
             "If operational priorities drift, the response may lose focus while criticism grows.",
@@ -865,7 +868,7 @@ export const invasiveMusselScenario: Scenario = {
       ],
       questions: [
         {
-          id: "p3steq1",
+          id: "p3dq1",
           text: "How would you restore confidence and improve cooperation where guidance and expectations have become unclear?",
           theme: "Stakeholders",
           placeholder:
@@ -874,14 +877,14 @@ export const invasiveMusselScenario: Scenario = {
       ],
       passingRules: {
         minScore: 5,
-        requiredCriteriaIds: ["p3ste1", "p3ste2", "p3ste3"],
+        requiredCriteriaIds: ["p3d1", "p3d2", "p3d3"],
       },
       nextStageMap: {
-        byMissingRequiredPriority: ["p3ste1", "p3ste2", "p3ste3"],
+        byMissingRequiredPriority: ["p3d1", "p3d2", "p3d3"],
         byMissingRequired: {
-          p3ste1: "p4c-approval-orc-pressure",
-          p3ste2: "p4c-approval-orc-pressure",
-          p3ste3: "p4a-surveillance-tracing-pressure",
+          p3d1: "p4c-approval-orc-pressure",
+          p3d2: "p4c-approval-orc-pressure",
+          p3d3: "p4b-surveillance-pressure",
         },
         strong: "p4c-approval-orc-pressure",
         mixed: "p4c-approval-orc-pressure",
@@ -891,26 +894,17 @@ export const invasiveMusselScenario: Scenario = {
     },
 
     {
-      id: "p4-controlled",
+      id: "p4-main",
       phaseNumber: 4,
-      title: "Operational Scaling with Emerging Challenges",
+      title: "Implementation and Operational Scaling",
       timeframe: "5–14 Days",
+      branchFamily: "main",
       baseScenarioText:
-        "The mussel has now been formally confirmed as exotic, and the response is scaling operationally. Surveillance and trace mapping have progressed, but some uncertainty remains. Containment measures are active, the incident control structure is functioning, and a response plan is being refined. However, approvals, removal planning, disposal pathways, environmental safeguards, workforce strain, and stakeholder expectations are all placing pressure on the operation at the same time.",
+        "The mussel has now been formally confirmed as exotic, and the response is scaling operationally. Surveillance and tracing have progressed, containment measures are active, and the incident structure is functioning. However, approvals, disposal pathways, environmental safeguards, workforce strain, and stakeholder expectations are now placing pressure on the operation at the same time.",
       criteria: [
         {
-          id: "p4c1",
-          text: "Complete surveillance and tracing to close remaining operational gaps",
-          consequence:
-            "If surveillance and tracing remain incomplete, later operational actions may be based on an unstable spread picture.",
-          theme: "Data",
-          required: true,
-          weight: 3,
-          keywords: ["surveillance", "tracing", "gaps", "mapping"],
-        },
-        {
-          id: "p4c2",
-          text: "Finalise approvals and operational arrangements for safe removal and disposal",
+          id: "p4m1",
+          text: "Finalise approvals and practical arrangements for safe removal and disposal",
           consequence:
             "If approvals and logistics remain unresolved, destruction and decontamination may be delayed.",
           theme: "Constraints",
@@ -925,402 +919,390 @@ export const invasiveMusselScenario: Scenario = {
           ],
         },
         {
-          id: "p4c3",
-          text: "Stabilise the response plan and stakeholder messaging under pressure",
+          id: "p4m2",
+          text: "Maintain surveillance and verification so operational scaling is based on a stable spread picture",
           consequence:
-            "If planning and communication remain uncertain, confidence and operational momentum may drop.",
+            "If surveillance weakens now, later decisions may be based on unstable assumptions.",
+          theme: "Data",
+          required: true,
+          weight: 2,
+          keywords: [
+            "surveillance",
+            "verification",
+            "spread picture",
+            "monitoring",
+            "sampling",
+          ],
+        },
+        {
+          id: "p4m3",
+          text: "Keep coordination, response planning, and stakeholder messaging aligned under pressure",
+          consequence:
+            "If planning and communication become misaligned, confidence and momentum may drop.",
           theme: "Protocols",
           required: true,
           weight: 2,
-          keywords: ["response plan", "planning", "messaging", "stakeholders"],
+          keywords: [
+            "coordination",
+            "response plan",
+            "messaging",
+            "alignment",
+            "stakeholders",
+          ],
         },
       ],
       questions: [
         {
-          id: "p4q1",
+          id: "p4mq1",
           text: "How would you move from investigation into safe operational scaling at this stage?",
           theme: "Protocols",
           placeholder:
-            "Describe your operational planning, approvals, and coordination approach...",
-        },
-        {
-          id: "p4q2",
-          text: "How would you manage removal, disposal, environmental safeguards, and stakeholder pressure at the same time?",
-          theme: "Constraints",
-          placeholder:
-            "Explain your logistics, approvals, communications, and risk-management approach...",
+            "Describe your approvals, disposal planning, surveillance, and coordination approach...",
         },
       ],
       passingRules: {
         minScore: 6,
-        requiredCriteriaIds: ["p4c1", "p4c2", "p4c3"],
+        requiredCriteriaIds: ["p4m1", "p4m2", "p4m3"],
       },
       nextStageMap: {
-        byMissingRequiredPriority: ["p4c1", "p4c2", "p4c3"],
+        byMissingRequiredPriority: ["p4m1", "p4m2", "p4m3"],
         byMissingRequired: {
-          p4c1: "p5a-surveillance-failure",
-          p4c2: "p5b-removal-failure",
-          p4c3: "p5c-plan-orc-failure",
+          p4m1: "p5a-workforce-disposal-pressure",
+          p4m2: "p5b-surveillance-residual-risk",
+          p4m3: "p5c-recovery-alignment-pressure",
         },
-        strong: "p5-controlled",
-        mixed: "p5-controlled",
-        limited: "p5a-surveillance-failure",
-        fallback: "p5-controlled",
+        strong: "p5-main",
+        mixed: "p5-main",
+        limited: "p5b-surveillance-residual-risk",
+        fallback: "p5-main",
       },
     },
 
     {
-      id: "p4a-surveillance-tracing-pressure",
+      id: "p4a-disposal-pressure",
       phaseNumber: 4,
-      title: "Operational Scaling — Surveillance and Tracing Pressure",
-      timeframe: "5–10 Days",
+      title: "Implementation — Removal and Disposal Pressure",
+      timeframe: "5–14 Days",
+      branchFamily: "disposal",
       baseScenarioText:
-        "Because surveillance and trace mapping were not completed strongly enough in the previous phase, additional linked risk locations are now emerging under pressure. The response is still active, but late detections and incomplete pathway mapping are increasing uncertainty and making prioritisation harder.",
+        "Removal, disposal, and decontamination planning are under pressure. Infected material may remain in the system longer than intended if approvals, logistics, and environmental safeguards are not finalised quickly and consistently.",
       criteria: [
         {
           id: "p4a1",
-          text: "Complete targeted surveillance and close major tracing gaps across the linked network",
+          text: "Stabilise practical removal, disposal, and decontamination arrangements",
           consequence:
-            "If surveillance and tracing remain incomplete, new detections may continue to emerge late and expand the operational footprint.",
-          theme: "Data",
+            "If execution remains delayed, infected material may stay in circulation longer than intended.",
+          theme: "Constraints",
           required: true,
           weight: 3,
           keywords: [
-            "targeted surveillance",
-            "trace mapping",
-            "linked sites",
-            "inspection",
-            "sampling",
-            "pathways",
+            "removal",
+            "disposal",
+            "decontamination",
+            "logistics",
+            "environmental safeguards",
           ],
         },
         {
           id: "p4a2",
-          text: "Re-prioritise containment and compliance at the highest-risk sites first",
+          text: "Protect workforce and operational flow while disposal pressure increases",
           consequence:
-            "If prioritisation is weak, scarce resources may be spread too thin and higher-risk pathways may remain active.",
-          theme: "Constraints",
+            "If operational flow breaks down, delays and mistakes may become more likely.",
+          theme: "Protocols",
           required: true,
           weight: 2,
           keywords: [
-            "prioritise",
-            "high-risk",
-            "containment",
-            "compliance",
-            "movement controls",
-          ],
-        },
-        {
-          id: "p4a3",
-          text: "Keep stakeholders informed about uncertainty, priorities, and likely next actions",
-          consequence:
-            "If communication remains weak, trust may fall and reporting or cooperation may deteriorate.",
-          theme: "Communication",
-          required: true,
-          weight: 2,
-          keywords: [
-            "stakeholders",
-            "communication",
-            "uncertainty",
-            "priorities",
-            "guidance",
+            "workforce",
+            "operational flow",
+            "coordination",
+            "staffing",
+            "pressure",
           ],
         },
       ],
       questions: [
         {
           id: "p4aq1",
-          text: "How would you close surveillance and tracing gaps while still controlling the highest-risk pathways?",
-          theme: "Data",
+          text: "How would you keep removal and disposal credible where execution pressure is increasing?",
+          theme: "Constraints",
           placeholder:
-            "Explain your surveillance, prioritisation, containment, and communication actions...",
+            "Explain your disposal, approvals, logistics, and workforce approach...",
         },
       ],
       passingRules: {
-        minScore: 5,
-        requiredCriteriaIds: ["p4a1", "p4a2", "p4a3"],
+        minScore: 4,
+        requiredCriteriaIds: ["p4a1", "p4a2"],
       },
       nextStageMap: {
-        byMissingRequiredPriority: ["p4a1", "p4a2", "p4a3"],
+        byMissingRequiredPriority: ["p4a1", "p4a2"],
         byMissingRequired: {
-          p4a1: "p5a-surveillance-failure",
-          p4a2: "p5a-surveillance-failure",
-          p4a3: "p5c-plan-orc-failure",
+          p4a1: "p5a-workforce-disposal-pressure",
+          p4a2: "p5a-workforce-disposal-pressure",
         },
-        strong: "p5a-controlled",
-        mixed: "p5a-controlled",
-        limited: "p5a-surveillance-failure",
-        fallback: "p5a-controlled",
+        strong: "p5a-workforce-disposal-pressure",
+        mixed: "p5a-workforce-disposal-pressure",
+        limited: "p5a-workforce-disposal-pressure",
+        fallback: "p5a-workforce-disposal-pressure",
       },
     },
 
     {
-      id: "p4b-removal-disposal-pressure",
+      id: "p4b-surveillance-pressure",
       phaseNumber: 4,
-      title: "Operational Scaling — Removal and Disposal Pressure",
-      timeframe: "5–10 Days",
+      title: "Implementation — Surveillance and Residual Detection Pressure",
+      timeframe: "5–14 Days",
+      branchFamily: "surveillance",
       baseScenarioText:
-        "The response is now under stronger operational pressure around removal, transport, disposal approvals, and safe destruction logistics. Delays in these areas are increasing the time infected material remains in the system and are creating further strain on containment credibility.",
+        "Because surveillance and trace closure were not completed strongly enough, additional linked risk locations are still emerging under pressure. The response remains active, but late detections and incomplete pathway mapping are increasing uncertainty and making prioritisation harder.",
       criteria: [
         {
           id: "p4b1",
-          text: "Advance practical removal, transport, and disposal arrangements for infected material",
+          text: "Close major surveillance and tracing gaps across the linked network",
           consequence:
-            "If removal and disposal planning is weak, infected material may remain in place longer and prolong the response.",
-          theme: "Constraints",
+            "If surveillance and tracing remain incomplete, new detections may continue to emerge late.",
+          theme: "Data",
           required: true,
           weight: 3,
           keywords: [
-            "removal",
-            "transport",
-            "disposal",
-            "infected material",
-            "logistics",
+            "surveillance",
+            "tracing",
+            "linked network",
+            "inspection",
+            "sampling",
+            "closure",
           ],
         },
         {
           id: "p4b2",
-          text: "Secure approvals and operational coordination needed to implement destruction safely",
+          text: "Re-prioritise high-risk controls while uncertainty remains",
           consequence:
-            "If approvals lag, response momentum may stall and operational confidence may weaken.",
-          theme: "Protocols",
+            "If prioritisation is weak, scarce resources may be spread too thin.",
+          theme: "Constraints",
           required: true,
           weight: 2,
           keywords: [
-            "approvals",
-            "coordination",
-            "destruction",
-            "implementation",
-            "operational",
-          ],
-        },
-        {
-          id: "p4b3",
-          text: "Maintain stakeholder compliance during disruptive operational controls",
-          consequence:
-            "If stakeholder cooperation weakens, access, timing, and containment effectiveness may all suffer.",
-          theme: "Stakeholders",
-          required: true,
-          weight: 2,
-          keywords: [
-            "stakeholders",
-            "compliance",
-            "access",
-            "guidance",
-            "cooperation",
+            "prioritise",
+            "high-risk",
+            "controls",
+            "containment",
+            "uncertainty",
           ],
         },
       ],
       questions: [
         {
           id: "p4bq1",
-          text: "How would you manage safe removal and disposal while keeping the response operationally credible?",
-          theme: "Constraints",
+          text: "How would you close surveillance gaps while still controlling the highest-risk pathways?",
+          theme: "Data",
           placeholder:
-            "Explain your logistics, approvals, coordination, and stakeholder actions...",
+            "Explain your surveillance, trace closure, and risk-prioritisation actions...",
         },
       ],
       passingRules: {
-        minScore: 5,
-        requiredCriteriaIds: ["p4b1", "p4b2", "p4b3"],
+        minScore: 4,
+        requiredCriteriaIds: ["p4b1", "p4b2"],
       },
       nextStageMap: {
-        byMissingRequiredPriority: ["p4b1", "p4b2", "p4b3"],
+        byMissingRequiredPriority: ["p4b1", "p4b2"],
         byMissingRequired: {
-          p4b1: "p5b-removal-failure",
-          p4b2: "p5b-removal-failure",
-          p4b3: "p5c-plan-orc-failure",
+          p4b1: "p5b-surveillance-residual-risk",
+          p4b2: "p5b-surveillance-residual-risk",
         },
-        strong: "p5b-controlled",
-        mixed: "p5b-controlled",
-        limited: "p5b-removal-failure",
-        fallback: "p5b-controlled",
+        strong: "p5b-surveillance-residual-risk",
+        mixed: "p5b-surveillance-residual-risk",
+        limited: "p5b-surveillance-residual-risk",
+        fallback: "p5b-surveillance-residual-risk",
       },
     },
 
     {
       id: "p4c-approval-orc-pressure",
       phaseNumber: 4,
-      title: "Operational Scaling — Approval, ORC, and Stakeholder Pressure",
-      timeframe: "5–10 Days",
+      title: "Implementation — Approval, ORC, and Stakeholder Pressure",
+      timeframe: "5–14 Days",
+      branchFamily: "alignment",
       baseScenarioText:
-        "Approval timelines, ORC expectations, and stakeholder confidence are now under strain. Industry frustration is rising, and the response must manage not only the pest threat itself but the consequences of delayed decisions, unclear expectations, and mounting external scrutiny.",
+        "Approvals, coordination expectations, and stakeholder confidence are now all under strain. Operational work is continuing, but delays in formal alignment are slowing implementation and placing pressure on confidence, workforce attention, and response momentum.",
       criteria: [
         {
-          id: "p4cp1",
-          text: "Progress the response plan and key approvals so the operation can move decisively",
+          id: "p4c1",
+          text: "Restore alignment between approvals, operational coordination, and response planning",
           consequence:
-            "If approval pathways stall, implementation delays will increase and operational confidence may erode.",
+            "If approvals and coordination remain misaligned, implementation may continue to lag.",
           theme: "Protocols",
           required: true,
           weight: 3,
           keywords: [
-            "response plan",
             "approvals",
-            "decision-making",
-            "implementation",
-            "plan",
+            "alignment",
+            "response plan",
+            "coordination",
+            "ORC",
           ],
         },
         {
-          id: "p4cp2",
-          text: "Manage ORC and stakeholder expectations with practical and consistent communication",
+          id: "p4c2",
+          text: "Maintain stakeholder confidence with clear and realistic communication",
           consequence:
-            "If expectations are not managed, frustration, criticism, and non-compliance may increase.",
+            "If confidence weakens further, cooperation and compliance may deteriorate.",
           theme: "Communication",
           required: true,
           weight: 2,
-          keywords: ["ORC", "expectations", "communication", "guidance", "stakeholders"],
-        },
-        {
-          id: "p4cp3",
-          text: "Maintain operational alignment between policy, coordination, and field response",
-          consequence:
-            "If alignment weakens, the response may become slower, inconsistent, and harder to sustain.",
-          theme: "Protocols",
-          required: true,
-          weight: 2,
-          keywords: ["alignment", "coordination", "field response", "policy", "operations"],
+          keywords: [
+            "confidence",
+            "communication",
+            "realistic updates",
+            "stakeholders",
+            "trust",
+          ],
         },
       ],
       questions: [
         {
           id: "p4cq1",
-          text: "How would you keep the response moving where approvals, ORC pressure, and stakeholder frustration are all increasing?",
-          theme: "Communication",
+          text: "How would you stabilise implementation where approvals, coordination, and confidence are all under pressure?",
+          theme: "Protocols",
           placeholder:
-            "Explain your approval, communication, coordination, and alignment actions...",
+            "Describe your approvals, alignment, update-management, and confidence-maintenance actions...",
         },
       ],
       passingRules: {
-        minScore: 5,
-        requiredCriteriaIds: ["p4cp1", "p4cp2", "p4cp3"],
+        minScore: 4,
+        requiredCriteriaIds: ["p4c1", "p4c2"],
       },
       nextStageMap: {
-        byMissingRequiredPriority: ["p4cp1", "p4cp2", "p4cp3"],
+        byMissingRequiredPriority: ["p4c1", "p4c2"],
         byMissingRequired: {
-          p4cp1: "p5c-plan-orc-failure",
-          p4cp2: "p5c-plan-orc-failure",
-          p4cp3: "p5c-plan-orc-failure",
+          p4c1: "p5c-recovery-alignment-pressure",
+          p4c2: "p5c-recovery-alignment-pressure",
         },
-        strong: "p5c-controlled",
-        mixed: "p5c-controlled",
-        limited: "p5c-plan-orc-failure",
-        fallback: "p5c-controlled",
+        strong: "p5c-recovery-alignment-pressure",
+        mixed: "p5c-recovery-alignment-pressure",
+        limited: "p5c-recovery-alignment-pressure",
+        fallback: "p5c-recovery-alignment-pressure",
       },
     },
 
     {
-      id: "p5-controlled",
+      id: "p5-main",
       phaseNumber: 5,
-      title: "Branching from Phase 4 — Sustained Operations Under Pressure",
-      timeframe: "14–28 Days",
+      title: "Sustained Response and Recovery Planning",
+      timeframe: "10–21 Days",
+      branchFamily: "main",
       baseScenarioText:
-        "Operations are now moving under sustained pressure. Surveillance is near completion, disposal and decontamination pathways are active or close to activation, and operational decisions must balance spread risk, contractor capacity, disposal logistics, environmental controls, communications, and stakeholder confidence. Response pressure is now less about discovery and more about execution, sequencing, fatigue, and accountability.",
+        "Major operational controls are now established. Destruction and decontamination are underway or prepared, surveillance is continuing, linked pathways are being verified, and recovery planning is beginning. The main remaining challenge is to sustain workforce capacity, maintain surveillance confidence, and prepare a disciplined recovery transition.",
       criteria: [
         {
-          id: "p5c1",
-          text: "Maintain refined surveillance and tracing confidence while operations are underway",
+          id: "p5m1",
+          text: "Manage workforce sustainability and maintain operational capacity",
           consequence:
-            "If surveillance confidence weakens, operations may proceed with unresolved risk.",
-          theme: "Data",
-          required: true,
-          weight: 2,
-          keywords: ["surveillance", "tracing", "confidence", "monitoring"],
-        },
-        {
-          id: "p5c2",
-          text: "Manage disposal, transport, decontamination, and sequencing risks carefully",
-          consequence:
-            "If operational sequencing is weak, delays and secondary spread risks may increase.",
-          theme: "Constraints",
+            "If staffing fatigue is not managed well, response quality may decline during the final stretch.",
+          theme: "Protocols",
           required: true,
           weight: 3,
           keywords: [
-            "disposal",
-            "transport",
-            "decontamination",
-            "sequencing",
-            "logistics",
+            "workforce",
+            "fatigue",
+            "rotations",
+            "staffing",
+            "capacity",
+            "sustainability",
           ],
         },
         {
-          id: "p5c3",
-          text: "Maintain stakeholder confidence and practical communication during visible operations",
+          id: "p5m2",
+          text: "Maintain surveillance and verification so confidence in containment remains strong",
           consequence:
-            "If communication is weak, criticism and fatigue may intensify as operations become more visible.",
+            "If surveillance weakens now, unresolved spread risk may carry into close-out.",
+          theme: "Data",
+          required: true,
+          weight: 2,
+          keywords: [
+            "surveillance",
+            "verification",
+            "containment confidence",
+            "monitoring",
+            "residual risk",
+          ],
+        },
+        {
+          id: "p5m3",
+          text: "Start disciplined recovery planning and clear expectations for the transition out of response mode",
+          consequence:
+            "If recovery planning is weak, the final transition may become confused or inconsistent.",
           theme: "Communication",
           required: true,
           weight: 2,
-          keywords: ["stakeholders", "communication", "confidence", "media", "fatigue"],
+          keywords: [
+            "recovery planning",
+            "transition",
+            "expectations",
+            "close-out",
+            "restrictions",
+          ],
         },
       ],
       questions: [
         {
-          id: "p5q1",
-          text: "How would you manage sustained removal, disposal, and operational pressure without losing control of risk?",
-          theme: "Constraints",
-          placeholder:
-            "Describe your logistics, sequencing, coordination, and workforce approach...",
-        },
-        {
-          id: "p5q2",
-          text: "How would you maintain confidence and cooperation while operations are highly visible and pressure is increasing?",
+          id: "p5mq1",
+          text: "How would you sustain the response and prepare for recovery while keeping the operation credible through the final phase?",
           theme: "Communication",
           placeholder:
-            "Explain your communication, industry engagement, and expectation-management approach...",
+            "Describe your workforce, surveillance, and recovery-planning approach...",
         },
       ],
       passingRules: {
         minScore: 6,
-        requiredCriteriaIds: ["p5c1", "p5c2", "p5c3"],
+        requiredCriteriaIds: ["p5m1", "p5m2", "p5m3"],
       },
       nextStageMap: {
-        byMissingRequiredPriority: ["p5c1", "p5c2", "p5c3"],
+        byMissingRequiredPriority: ["p5m1", "p5m2", "p5m3"],
         byMissingRequired: {
-          p5c1: "p6a-worsening",
-          p5c2: "p6b-worsening",
-          p5c3: "p6c-worsening",
+          p5m1: "p6a-workforce-closeout",
+          p5m2: "p6b-surveillance-closeout",
+          p5m3: "p6c-recovery-closeout",
         },
-        strong: "p6-controlled",
-        mixed: "p6-controlled",
-        limited: "p6a-worsening",
-        fallback: "p6-controlled",
+        strong: "p6-main",
+        mixed: "p6-main",
+        limited: "p6a-workforce-closeout",
+        fallback: "p6-main",
       },
     },
 
     {
-      id: "p5a-controlled",
+      id: "p5a-workforce-disposal-pressure",
       phaseNumber: 5,
-      title: "Sustained Response — Surveillance and Tracing Completion",
+      title: "Sustained Response — Workforce and Disposal Pressure",
       timeframe: "10–21 Days",
+      branchFamily: "workforce",
       baseScenarioText:
-        "The response is still pressured, but surveillance and tracing are being completed more effectively. The main challenge is whether the spread picture can now be closed with enough confidence to support decisive action.",
+        "Disposal, decontamination, and related operational tasks are continuing under pressure. Workforce fatigue, task coordination, and execution consistency are becoming the main challenges as the response enters the late stage.",
       criteria: [
         {
           id: "p5a1",
-          text: "Finalise high-risk surveillance and confirm the spread picture",
+          text: "Stabilise workforce capacity and execution discipline through the late-stage response",
           consequence:
-            "If the spread picture remains incomplete, the response may carry hidden residual risk into the final phase.",
-          theme: "Data",
+            "If fatigue and coordination are not managed, final operations may become less reliable and slower.",
+          theme: "Protocols",
           required: true,
           weight: 3,
           keywords: [
-            "finalise surveillance",
-            "spread picture",
-            "high-risk",
-            "confirm",
-            "trace",
+            "workforce",
+            "fatigue",
+            "rotations",
+            "capacity",
+            "late-stage",
+            "discipline",
           ],
         },
       ],
       questions: [
         {
           id: "p5aq1",
-          text: "How would you complete surveillance and close out the main residual detection risks?",
-          theme: "Data",
+          text: "How would you keep late-stage operations reliable where workforce and disposal pressure remain high?",
+          theme: "Protocols",
           placeholder:
-            "Explain how you would finish surveillance, tracing, and prioritisation...",
+            "Explain your staffing, rotation, coordination, and operational-discipline approach...",
         },
       ],
       passingRules: {
@@ -1329,118 +1311,27 @@ export const invasiveMusselScenario: Scenario = {
       },
       nextStageMap: {
         byMissingRequired: {
-          p5a1: "p6a-worsening",
+          p5a1: "p6a-workforce-closeout",
         },
-        strong: "p6-controlled",
-        mixed: "p6a-worsening",
-        limited: "p6a-worsening",
-        fallback: "p6a-worsening",
+        strong: "p6a-workforce-closeout",
+        mixed: "p6a-workforce-closeout",
+        limited: "p6a-workforce-closeout",
+        fallback: "p6a-workforce-closeout",
       },
     },
 
     {
-      id: "p5b-controlled",
+      id: "p5b-surveillance-residual-risk",
       phaseNumber: 5,
-      title: "Sustained Response — Removal and Disposal Mobilisation",
+      title: "Sustained Response — Residual Surveillance Risk",
       timeframe: "10–21 Days",
+      branchFamily: "surveillance",
       baseScenarioText:
-        "Operational focus is now on safe removal, transport, and disposal. The response is still viable, but execution quality now matters more than planning alone.",
+        "Because surveillance and trace closure remained incomplete earlier, the response is still carrying late-detection risk into the final stage. Confidence in the true spread picture is reduced and additional infected locations may still emerge if verification is not maintained.",
       criteria: [
         {
           id: "p5b1",
-          text: "Execute removal and disposal with strong operational control",
-          consequence:
-            "If execution weakens, biosecurity risk and delay may re-emerge late in the response.",
-          theme: "Constraints",
-          required: true,
-          weight: 3,
-          keywords: [
-            "execute",
-            "removal",
-            "disposal",
-            "operational control",
-            "transport",
-          ],
-        },
-      ],
-      questions: [
-        {
-          id: "p5bq1",
-          text: "How would you ensure removal and disposal are completed safely and credibly?",
-          theme: "Constraints",
-          placeholder:
-            "Explain your execution, logistics, and control approach...",
-        },
-      ],
-      passingRules: {
-        minScore: 3,
-        requiredCriteriaIds: ["p5b1"],
-      },
-      nextStageMap: {
-        byMissingRequired: {
-          p5b1: "p6b-worsening",
-        },
-        strong: "p6-controlled",
-        mixed: "p6b-worsening",
-        limited: "p6b-worsening",
-        fallback: "p6b-worsening",
-      },
-    },
-
-    {
-      id: "p5c-controlled",
-      phaseNumber: 5,
-      title: "Sustained Response — Response Plan Finalisation and ORC Alignment",
-      timeframe: "10–21 Days",
-      baseScenarioText:
-        "The response now depends on approval follow-through, ORC alignment, and maintaining stakeholder confidence while the operation remains disruptive.",
-      criteria: [
-        {
-          id: "p5cp1",
-          text: "Keep approvals, ORC expectations, and stakeholder communication aligned through the final operating period",
-          consequence:
-            "If alignment weakens now, late-stage compliance and confidence may still break down.",
-          theme: "Communication",
-          required: true,
-          weight: 3,
-          keywords: ["approvals", "ORC", "expectations", "alignment", "stakeholders"],
-        },
-      ],
-      questions: [
-        {
-          id: "p5cq2",
-          text: "How would you maintain confidence and alignment while final decisions are still under pressure?",
-          theme: "Communication",
-          placeholder:
-            "Explain your communication, approvals, and stakeholder approach...",
-        },
-      ],
-      passingRules: {
-        minScore: 3,
-        requiredCriteriaIds: ["p5cp1"],
-      },
-      nextStageMap: {
-        byMissingRequired: {
-          p5cp1: "p6c-worsening",
-        },
-        strong: "p6-controlled",
-        mixed: "p6c-worsening",
-        limited: "p6c-worsening",
-        fallback: "p6c-worsening",
-      },
-    },
-
-    {
-      id: "p5a-surveillance-failure",
-      phaseNumber: 5,
-      title: "Sustained Response — Consequence of Incomplete Surveillance",
-      timeframe: "10–21 Days",
-      baseScenarioText:
-        "Because surveillance and trace closure remained incomplete, the response is now carrying late-detection risk into the final stage. Confidence in the true spread picture is reduced and additional infected locations may still emerge.",
-      criteria: [
-        {
-          id: "p5af1",
-          text: "Prioritise final targeted surveillance and residual risk controls",
+          text: "Prioritise final targeted surveillance and residual-risk controls",
           consequence:
             "If final surveillance still does not close the main gaps, the response may end with unresolved spread risk.",
           theme: "Data",
@@ -1449,215 +1340,127 @@ export const invasiveMusselScenario: Scenario = {
           keywords: [
             "targeted surveillance",
             "residual risk",
-            "late detection",
             "final inspections",
-          ],
-        },
-      ],
-      questions: [
-        {
-          id: "p5afq1",
-          text: "What would you do now that late detection risk is still active going into the final stage?",
-          theme: "Data",
-          placeholder:
-            "Explain your last-round surveillance and risk-control actions...",
-        },
-      ],
-      passingRules: {
-        minScore: 3,
-        requiredCriteriaIds: ["p5af1"],
-      },
-      nextStageMap: {
-        strong: "p6a-worsening",
-        mixed: "p6a-worsening",
-        limited: "p6a-worsening",
-        fallback: "p6a-worsening",
-      },
-    },
-
-    {
-      id: "p5b-removal-failure",
-      phaseNumber: 5,
-      title: "Sustained Response — Consequence of Removal and Disposal Delays",
-      timeframe: "10–21 Days",
-      baseScenarioText:
-        "Removal and disposal have not progressed strongly enough. Infected material remains in the system longer than intended, and operational pressure is now shifting into the final phase with higher consequence risk.",
-      criteria: [
-        {
-          id: "p5bf1",
-          text: "Stabilise late-stage removal and disposal execution under pressure",
-          consequence:
-            "If execution remains delayed, final containment credibility may weaken further.",
-          theme: "Constraints",
-          required: true,
-          weight: 3,
-          keywords: [
-            "stabilise",
-            "removal",
-            "disposal",
-            "late-stage",
-            "execution",
-          ],
-        },
-      ],
-      questions: [
-        {
-          id: "p5bfq1",
-          text: "How would you recover operational control where removal and disposal are still lagging?",
-          theme: "Constraints",
-          placeholder: "Explain your recovery and execution actions...",
-        },
-      ],
-      passingRules: {
-        minScore: 3,
-        requiredCriteriaIds: ["p5bf1"],
-      },
-      nextStageMap: {
-        strong: "p6b-worsening",
-        mixed: "p6b-worsening",
-        limited: "p6b-worsening",
-        fallback: "p6b-worsening",
-      },
-    },
-
-    {
-      id: "p5c-plan-orc-failure",
-      phaseNumber: 5,
-      title: "Sustained Response — Consequence of Approval, ORC, and Confidence Strain",
-      timeframe: "10–21 Days",
-      baseScenarioText:
-        "Delays in approvals, ORC uncertainty, and weakening stakeholder confidence are now carrying directly into the final phase. The response remains active, but confidence and cooperation are more fragile than they should be.",
-      criteria: [
-        {
-          id: "p5cf1",
-          text: "Stabilise stakeholder confidence and operational alignment despite delayed decisions",
-          consequence:
-            "If confidence continues to weaken, the final phase may become harder to coordinate and sustain.",
-          theme: "Stakeholders",
-          required: true,
-          weight: 3,
-          keywords: [
-            "stabilise",
-            "confidence",
-            "alignment",
-            "delayed decisions",
-            "stakeholders",
-          ],
-        },
-      ],
-      questions: [
-        {
-          id: "p5cfq1",
-          text: "How would you maintain cooperation where approvals and ORC issues are still unresolved late in the response?",
-          theme: "Stakeholders",
-          placeholder:
-            "Explain your alignment, communication, and confidence actions...",
-        },
-      ],
-      passingRules: {
-        minScore: 3,
-        requiredCriteriaIds: ["p5cf1"],
-      },
-      nextStageMap: {
-        strong: "p6c-worsening",
-        mixed: "p6c-worsening",
-        limited: "p6c-worsening",
-        fallback: "p6c-worsening",
-      },
-    },
-
-    {
-      id: "p6-controlled",
-      phaseNumber: 6,
-      title: "Coordinated Execution Under Sustained Pressure",
-      timeframe: "28 Days+",
-      baseScenarioText:
-        "Surveillance and tracing activities are now largely complete, with confidence in the known spread picture high but not absolute. The confirmed footprint includes the index site and multiple linked infested locations. Most transmission pathways are now understood, though some indirect or lower-confidence links remain unresolved, particularly around contractor movement, shared equipment histories, and incomplete operational records. Containment zones have been refined and movement restrictions are generally well understood, but compliance fatigue is emerging in outer control areas where no infestation has been detected. Removal, disposal, and decontamination activities are now underway under approved environmental controls. However, disposal-site capacity is tighter than expected, transport logistics are complex, weather and scheduling pressures are affecting timing, and administrative pressure is increasing around reimbursement, documentation, and response milestones. The incident control function remains active and capable, but sustained operational tempo is placing pressure on personnel, prioritisation, communications, and decisions about stand-down. At this stage, teams must balance confidence-building, residual risk, lessons learned, and the pathway toward safe transition.",
-      criteria: [
-        {
-          id: "p6c1",
-          text: "Confirm the eradication pathway and residual risk before easing restrictions or standing down",
-          consequence:
-            "If residual risk is underestimated, the response may stand down too early and lose control of re-emergence risk.",
-          theme: "Data",
-          required: true,
-          weight: 3,
-          keywords: [
-            "eradication pathway",
-            "residual risk",
-            "confidence",
             "verification",
-            "proof of freedom",
-          ],
-        },
-        {
-          id: "p6c2",
-          text: "Plan the transition toward stand-down while retaining lessons learned and operational knowledge",
-          consequence:
-            "If stand-down is poorly managed, critical lessons and readiness improvements may be lost.",
-          theme: "Protocols",
-          required: true,
-          weight: 2,
-          keywords: [
-            "stand down",
-            "transition",
-            "lessons learned",
-            "institutional knowledge",
-          ],
-        },
-        {
-          id: "p6c3",
-          text: "Maintain safe and coordinated removal, disposal, and decontamination activity through completion",
-          consequence:
-            "If final operational controls weaken, disposal, transport, or decontamination risks may undermine the response.",
-          theme: "Constraints",
-          required: true,
-          weight: 2,
-          keywords: [
-            "removal",
-            "disposal",
-            "decontamination",
-            "transport",
-            "coordination",
-          ],
-        },
-        {
-          id: "p6c4",
-          text: "Manage communications and stakeholder expectations around fatigue, costs, duration, and transition",
-          consequence:
-            "If expectations are not managed clearly, confidence may erode even during a technically successful response.",
-          theme: "Communication",
-          required: false,
-          weight: 1,
-          keywords: [
-            "communications",
-            "stakeholders",
-            "fatigue",
-            "cost",
-            "duration",
-            "transition",
+            "monitoring",
           ],
         },
       ],
       questions: [
         {
-          id: "p6q1",
-          text: "How would you manage the move toward stand-down while still controlling residual risk and maintaining operational discipline?",
-          theme: "Protocols",
-          placeholder:
-            "Describe your stand-down, lessons learned, residual-risk, and operational-completion approach...",
-        },
-        {
-          id: "p6q2",
-          text: "What would you need to see before you were confident enough to reduce restrictions or close out major response activities?",
+          id: "p5bq1",
+          text: "What would you do now that residual detection risk is still active going into the final stage?",
           theme: "Data",
           placeholder:
-            "Explain your verification, confidence, disposal-completion, and transition requirements...",
+            "Explain your last-round surveillance and residual-risk-control actions...",
         },
       ],
       passingRules: {
-        minScore: 6,
-        requiredCriteriaIds: ["p6c1", "p6c2", "p6c3"],
+        minScore: 3,
+        requiredCriteriaIds: ["p5b1"],
+      },
+      nextStageMap: {
+        byMissingRequired: {
+          p5b1: "p6b-surveillance-closeout",
+        },
+        strong: "p6b-surveillance-closeout",
+        mixed: "p6b-surveillance-closeout",
+        limited: "p6b-surveillance-closeout",
+        fallback: "p6b-surveillance-closeout",
+      },
+    },
+
+    {
+      id: "p5c-recovery-alignment-pressure",
+      phaseNumber: 5,
+      title: "Sustained Response — Recovery and Alignment Pressure",
+      timeframe: "10–21 Days",
+      branchFamily: "recovery",
+      baseScenarioText:
+        "The response now depends on approval follow-through, coordination alignment, and maintaining stakeholder confidence while the operation remains disruptive. Recovery planning is possible, but confidence and expectations still need careful management.",
+      criteria: [
+        {
+          id: "p5c1",
+          text: "Keep recovery planning, stakeholder expectations, and coordination aligned through the late-stage response",
+          consequence:
+            "If alignment weakens now, the transition into close-out may become fragile and confused.",
+          theme: "Communication",
+          required: true,
+          weight: 3,
+          keywords: [
+            "recovery planning",
+            "alignment",
+            "stakeholders",
+            "expectations",
+            "coordination",
+            "close-out",
+          ],
+        },
+      ],
+      questions: [
+        {
+          id: "p5cq1",
+          text: "How would you maintain confidence and alignment while preparing for close-out and recovery?",
+          theme: "Communication",
+          placeholder:
+            "Explain your recovery planning, communication, and final alignment approach...",
+        },
+      ],
+      passingRules: {
+        minScore: 3,
+        requiredCriteriaIds: ["p5c1"],
+      },
+      nextStageMap: {
+        byMissingRequired: {
+          p5c1: "p6c-recovery-closeout",
+        },
+        strong: "p6c-recovery-closeout",
+        mixed: "p6c-recovery-closeout",
+        limited: "p6c-recovery-closeout",
+        fallback: "p6c-recovery-closeout",
+      },
+    },
+
+    {
+      id: "p6-main",
+      phaseNumber: 6,
+      title: "Final Phase — Controlled Close-Out",
+      timeframe: "Final Phase",
+      branchFamily: "main",
+      isTerminal: true,
+      summaryCategory: "controlled-closeout",
+      baseScenarioText:
+        "The response reaches the final phase with operational control largely maintained. Remaining priorities focus on disciplined close-out, verification, and clear recovery transition arrangements.",
+      criteria: [
+        {
+          id: "p6m1",
+          text: "Explain how you would maintain disciplined close-out, final verification, and a clear recovery transition",
+          consequence:
+            "If close-out is poorly managed, avoidable confusion may still emerge at the final stage.",
+          theme: "Expectations",
+          required: true,
+          weight: 2,
+          keywords: [
+            "close-out",
+            "verification",
+            "recovery transition",
+            "discipline",
+            "final priorities",
+          ],
+        },
+      ],
+      questions: [
+        {
+          id: "p6mq1",
+          text: "How would you bring the response to a disciplined and credible close while preparing the recovery transition?",
+          theme: "Expectations",
+          placeholder:
+            "Explain your final close-out, verification, and transition approach...",
+        },
+      ],
+      passingRules: {
+        minScore: 2,
+        requiredCriteriaIds: ["p6m1"],
       },
       nextStageMap: {
         strong: "complete",
@@ -1668,35 +1471,41 @@ export const invasiveMusselScenario: Scenario = {
     },
 
     {
-      id: "p6a-worsening",
+      id: "p6a-workforce-closeout",
       phaseNumber: 6,
-      title: "Final Phase — Consequence of Residual Detection Risk",
+      title: "Final Phase — Workforce and Execution Close-Out",
       timeframe: "Final Phase",
+      branchFamily: "workforce",
+      isTerminal: true,
+      summaryCategory: "workforce-closeout",
       baseScenarioText:
-        "Residual surveillance and trace uncertainty remain active in the final phase. The response is still moving, but confidence in the true spread picture is weaker and final assurance is harder to achieve.",
+        "The final phase is shaped by workforce pressure, operational fatigue, and the need to keep late-stage execution stable enough to conclude the response credibly.",
       criteria: [
         {
           id: "p6a1",
-          text: "Explain how you would manage final residual detection risk and close-out decisions",
+          text: "Explain how you would stabilise final operations and maintain execution discipline under fatigue pressure",
           consequence:
-            "If residual detection risk is not managed clearly, confidence in final outcomes may remain fragile.",
-          theme: "Data",
+            "If late-stage execution remains unstable, the final transition may be less credible and harder to sustain.",
+          theme: "Protocols",
           required: true,
           weight: 2,
           keywords: [
-            "residual risk",
-            "detection",
-            "close-out",
-            "final surveillance",
+            "stabilise",
+            "operations",
+            "fatigue",
+            "discipline",
+            "late-stage",
+            "workforce",
           ],
         },
       ],
       questions: [
         {
           id: "p6aq1",
-          text: "How would you manage close-out where residual detection uncertainty is still present?",
-          theme: "Data",
-          placeholder: "Explain your final residual-risk approach...",
+          text: "How would you maintain credibility where final operations are still under workforce pressure?",
+          theme: "Protocols",
+          placeholder:
+            "Explain your stabilisation, staffing, and close-out actions...",
         },
       ],
       passingRules: {
@@ -1712,35 +1521,40 @@ export const invasiveMusselScenario: Scenario = {
     },
 
     {
-      id: "p6b-worsening",
+      id: "p6b-surveillance-closeout",
       phaseNumber: 6,
-      title: "Final Phase — Consequence of Operational Execution Delays",
+      title: "Final Phase — Residual Surveillance Close-Out",
       timeframe: "Final Phase",
+      branchFamily: "surveillance",
+      isTerminal: true,
+      summaryCategory: "surveillance-closeout",
       baseScenarioText:
-        "Removal, disposal, or late-stage operational execution remained under strain. The response reaches the final phase with greater operational fatigue and reduced flexibility than intended.",
+        "The final phase is now shaped by lingering uncertainty about residual detection risk. Operational success depends on disciplined final verification, targeted monitoring, and cautious close-out decisions.",
       criteria: [
         {
           id: "p6b1",
-          text: "Explain how you would stabilise final operations and maintain containment confidence",
+          text: "Explain how you would manage final verification and residual-risk decisions before close-out",
           consequence:
-            "If late-stage execution remains unstable, the final transition may be less credible and harder to sustain.",
-          theme: "Constraints",
+            "If residual-risk decisions are weak, the response may end with unresolved uncertainty.",
+          theme: "Data",
           required: true,
           weight: 2,
           keywords: [
-            "stabilise",
-            "operations",
-            "containment confidence",
-            "late-stage",
+            "verification",
+            "residual risk",
+            "final surveillance",
+            "monitoring",
+            "close-out",
           ],
         },
       ],
       questions: [
         {
           id: "p6bq1",
-          text: "How would you maintain credibility where final operations are still under pressure?",
-          theme: "Constraints",
-          placeholder: "Explain your stabilisation and close-out actions...",
+          text: "How would you manage close-out where residual detection uncertainty is still present?",
+          theme: "Data",
+          placeholder:
+            "Explain your final verification and residual-risk approach...",
         },
       ],
       passingRules: {
@@ -1756,16 +1570,19 @@ export const invasiveMusselScenario: Scenario = {
     },
 
     {
-      id: "p6c-worsening",
+      id: "p6c-recovery-closeout",
       phaseNumber: 6,
-      title: "Final Phase — Consequence of Stakeholder and Confidence Strain",
+      title: "Final Phase — Recovery and Confidence Close-Out",
       timeframe: "Final Phase",
+      branchFamily: "recovery",
+      isTerminal: true,
+      summaryCategory: "recovery-closeout",
       baseScenarioText:
-        "The final phase is now shaped by weakened confidence, approval strain, ORC pressure, and more fragile cooperation than expected. Operational success now depends heavily on clear communication and disciplined coordination.",
+        "The final phase is shaped by the need to maintain confidence, communicate clearly, and conclude the response in a coordinated way while preparing for recovery and lifting of restrictions.",
       criteria: [
         {
-          id: "p6d1",
-          text: "Explain how you would maintain confidence, communication, and coordinated close-out under pressure",
+          id: "p6c1",
+          text: "Explain how you would maintain confidence, communication, and coordinated recovery close-out under pressure",
           consequence:
             "If coordination and confidence are not maintained, the final phase may become disorderly and harder to conclude well.",
           theme: "Communication",
@@ -1775,14 +1592,15 @@ export const invasiveMusselScenario: Scenario = {
             "confidence",
             "communication",
             "coordinated close-out",
+            "recovery",
             "pressure",
           ],
         },
       ],
       questions: [
         {
-          id: "p6cq2",
-          text: "How would you manage final close-out where confidence and cooperation are under strain?",
+          id: "p6cq1",
+          text: "How would you manage final close-out where confidence and recovery expectations are under strain?",
           theme: "Communication",
           placeholder:
             "Explain your confidence, communication, and close-out actions...",
@@ -1790,7 +1608,7 @@ export const invasiveMusselScenario: Scenario = {
       ],
       passingRules: {
         minScore: 2,
-        requiredCriteriaIds: ["p6d1"],
+        requiredCriteriaIds: ["p6c1"],
       },
       nextStageMap: {
         strong: "complete",
@@ -1805,13 +1623,16 @@ export const invasiveMusselScenario: Scenario = {
       phaseNumber: 7,
       title: "Simulation Complete",
       timeframe: "End State",
+      branchFamily: "complete",
+      isTerminal: true,
+      summaryCategory: "reflection",
       baseScenarioText:
         "You have reached the end of the simulation. Before viewing the final summary, briefly reflect on the most important operational priorities across the response and how missed actions early in the incident can worsen later consequences.",
       criteria: [],
       questions: [
         {
           id: "complete-q1",
-          text: "Before viewing the final summary, briefly reflect on the most important operational priorities across the incident and what gaps most increased consequence over time.",
+          text: "Before viewing the final summary, briefly reflect on the major priorities across the incident and what gaps most increased consequence over time.",
           theme: "Expectations",
           placeholder:
             "Write a short reflection on the major priorities, risks, and lessons across the simulation...",
@@ -1828,6 +1649,6 @@ export const invasiveMusselScenario: Scenario = {
   ],
 };
 
-export function getScenarioStageById(stageId: string) {
+export function getScenarioStageById(stageId: string): ScenarioStage | undefined {
   return invasiveMusselScenario.stages.find((stage) => stage.id === stageId);
 }
