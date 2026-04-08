@@ -15,6 +15,7 @@ export default function FloatingSessionMeeting() {
   const [meeting, setMeeting] = useState<ActiveMeetingState | null>(null);
   const [minimized, setMinimized] = useState(false);
   const [hidden, setHidden] = useState(false);
+  const [expanded, setExpanded] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -30,6 +31,7 @@ export default function FloatingSessionMeeting() {
         setMeeting(null);
         setMinimized(false);
         setHidden(false);
+        setExpanded(false);
         return;
       }
 
@@ -51,6 +53,7 @@ export default function FloatingSessionMeeting() {
       setMeeting(null);
       setMinimized(false);
       setHidden(false);
+      setExpanded(false);
     };
 
     syncMeeting();
@@ -74,35 +77,66 @@ export default function FloatingSessionMeeting() {
 
   if (!mounted || !meeting) return null;
 
+  const panelClasses = expanded
+    ? "fixed inset-0 z-[9999] w-screen h-screen rounded-none border-0 bg-white shadow-none"
+    : "fixed bottom-4 right-4 z-50 w-[92vw] max-w-[520px] rounded-2xl border bg-white shadow-2xl";
+
+  const bodyClasses =
+    hidden || minimized
+      ? "max-h-0 p-0 opacity-0"
+      : expanded
+      ? "h-[calc(100vh-88px)] p-0 opacity-100"
+      : "max-h-[560px] p-3 opacity-100";
+
+  const meetingHeight = expanded
+    ? typeof window !== "undefined"
+      ? window.innerHeight - 88
+      : 700
+    : 380;
+
   return (
-    <div className="fixed bottom-4 right-4 z-50 w-[92vw] max-w-[520px] rounded-2xl border bg-white shadow-2xl">
+    <div className={panelClasses}>
       <div className="flex items-center justify-between border-b px-4 py-3">
-        <div>
+        <div className="min-w-0">
           <p className="text-sm font-semibold text-slate-900">Meeting Room</p>
-          <p className="text-xs text-slate-500">{meeting.sessionCode}</p>
-          <p className="text-xs text-slate-400">{meeting.userName}</p>
+          <p className="truncate text-xs text-slate-500">{meeting.sessionCode}</p>
+          <p className="truncate text-xs text-slate-400">{meeting.userName}</p>
           <p className="text-[11px] text-slate-400">
             {meeting.isHost ? "Host controls session" : "Viewer mode"}
           </p>
         </div>
 
-        <div className="flex gap-2">
+        <div className="ml-3 flex flex-wrap gap-2">
           <button
             type="button"
             onClick={() => {
               setHidden(false);
+              setExpanded(false);
               setMinimized((prev) => !prev);
             }}
             className="rounded-lg border px-2 py-1 text-xs text-slate-700"
           >
-            {minimized ? "Expand" : "Minimize"}
+            {minimized ? "Restore" : "Minimize"}
           </button>
 
           <button
             type="button"
             onClick={() => {
-              setHidden((prev) => !prev);
+              setHidden(false);
               setMinimized(false);
+              setExpanded((prev) => !prev);
+            }}
+            className="rounded-lg border px-2 py-1 text-xs text-slate-700"
+          >
+            {expanded ? "Exit Expand" : "Expand"}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setExpanded(false);
+              setMinimized(false);
+              setHidden((prev) => !prev);
             }}
             className="rounded-lg border px-2 py-1 text-xs text-slate-700"
           >
@@ -111,19 +145,17 @@ export default function FloatingSessionMeeting() {
         </div>
       </div>
 
-      <div
-        className={`overflow-hidden transition-all duration-200 ${
-          hidden || minimized
-            ? "max-h-0 p-0 opacity-0"
-            : "max-h-[560px] p-3 opacity-100"
-        }`}
-      >
-        <JitsiMeeting
-          roomName={meeting.roomName}
-          userName={meeting.userName}
-          height={380}
-          isHost={Boolean(meeting.isHost)}
-        />
+      <div className={`overflow-hidden transition-all duration-200 ${bodyClasses}`}>
+        {!hidden && !minimized && (
+          <div className={expanded ? "h-full w-full" : ""}>
+            <JitsiMeeting
+              roomName={meeting.roomName}
+              userName={meeting.userName}
+              height={meetingHeight}
+              isHost={Boolean(meeting.isHost)}
+            />
+          </div>
+        )}
       </div>
     </div>
   );

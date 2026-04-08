@@ -43,7 +43,7 @@ export default function JitsiMeeting({
         }
 
         const existing = document.querySelector(
-          'script[src="https://meet.jit.si/external_api.js"]'
+          'script[src="https://meet.jit.si/external_api.js"]',
         ) as HTMLScriptElement | null;
 
         if (existing) {
@@ -51,7 +51,7 @@ export default function JitsiMeeting({
           existing.addEventListener(
             "error",
             () => reject(new Error("Failed to load Jitsi script")),
-            { once: true }
+            { once: true },
           );
           return;
         }
@@ -139,5 +139,10 @@ export default function JitsiMeeting({
     };
   }, [roomName, userName, height, onReady, isHost]);
 
-  return <div ref={containerRef} className="w-full overflow-hidden rounded-xl" />;
+  return (
+    <div
+      ref={containerRef}
+      className="h-full w-full overflow-hidden rounded-xl"
+    />
+  );
 }
