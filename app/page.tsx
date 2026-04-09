@@ -7,12 +7,12 @@ export default function HomePage() {
   return (
     <main className="min-h-screen relative overflow-hidden">
       <div className="absolute inset-0 bg-gradient-to-br from-blue-100 via-white to-cyan-100" />
-      <div className="absolute top-0 left-0 w-[500px] h-[500px] bg-blue-300/20 blur-3xl rounded-full" />
-      <div className="absolute bottom-0 right-0 w-[500px] h-[500px] bg-cyan-300/20 blur-3xl rounded-full" />
+      <div className="absolute top-0 left-0 h-[500px] w-[500px] rounded-full bg-blue-300/20 blur-3xl" />
+      <div className="absolute bottom-0 right-0 h-[500px] w-[500px] rounded-full bg-cyan-300/20 blur-3xl" />
 
       <div className="relative z-10 mx-auto max-w-6xl px-6 py-10">
-        <div className="text-center space-y-6 mb-16">
-          <Badge className="px-4 py-1 rounded-full bg-blue-600 text-white">
+        <div className="mb-16 space-y-6 text-center">
+          <Badge className="rounded-full bg-blue-600 px-4 py-1 text-white">
             Aquatic Biosecurity Simulation
           </Badge>
 
@@ -20,8 +20,8 @@ export default function HomePage() {
             Smart Emergency Simulation Platform
           </h1>
 
-          <p className="text-lg text-slate-600 max-w-2xl mx-auto">
-            Explore a realistic aquatic biosecurity emergency scenario through
+          <p className="mx-auto max-w-2xl text-lg text-slate-600">
+            Explore realistic aquatic biosecurity emergency scenarios through
             structured phases, free-text response, and AI-guided feedback.
           </p>
 
@@ -31,7 +31,7 @@ export default function HomePage() {
               size="lg"
               className="group relative overflow-hidden rounded-2xl border-0 bg-gradient-to-r from-blue-600 via-cyan-500 to-blue-700 px-8 py-6 text-base font-medium text-white shadow-lg transition-all duration-300 hover:scale-[1.03] hover:shadow-cyan-200"
             >
-              <Link href="/scenario/invasive-mussel">
+              <Link href="/scenario">
                 <span className="relative z-10 flex items-center gap-2">
                   Start Simulation
                   <span className="transition-transform duration-300 group-hover:translate-x-1">
@@ -53,27 +53,28 @@ export default function HomePage() {
           </div>
         </div>
 
-        <div className="grid md:grid-cols-3 gap-6">
-          <div className="bg-white/70 backdrop-blur-lg border rounded-2xl p-6 shadow-sm">
+        <div className="grid gap-6 md:grid-cols-3">
+          <div className="rounded-2xl border bg-white/70 p-6 shadow-sm backdrop-blur-lg">
             <Waves className="mb-4 h-8 w-8 text-blue-600" />
-            <h3 className="font-semibold text-lg">Structured Phase Flow</h3>
-            <p className="text-sm text-slate-600 mt-2">
-              Progress through a realistic multi-phase aquatic emergency scenario.
+            <h3 className="text-lg font-semibold">Structured Phase Flow</h3>
+            <p className="mt-2 text-sm text-slate-600">
+              Progress through realistic multi-phase aquatic emergency scenarios.
             </p>
           </div>
 
-          <div className="bg-white/70 backdrop-blur-lg border rounded-2xl p-6 shadow-sm">
+          <div className="rounded-2xl border bg-white/70 p-6 shadow-sm backdrop-blur-lg">
             <ShieldAlert className="mb-4 h-8 w-8 text-red-500" />
-            <h3 className="font-semibold text-lg">Adaptive Pathways</h3>
-            <p className="text-sm text-slate-600 mt-2">
-              Your responses shape what happens next, including recovery and escalation paths.
+            <h3 className="text-lg font-semibold">Adaptive Pathways</h3>
+            <p className="mt-2 text-sm text-slate-600">
+              Your responses shape what happens next, including escalation and
+              recovery pathways.
             </p>
           </div>
 
-          <div className="bg-white/70 backdrop-blur-lg border rounded-2xl p-6 shadow-sm">
+          <div className="rounded-2xl border bg-white/70 p-6 shadow-sm backdrop-blur-lg">
             <Sparkles className="mb-4 h-8 w-8 text-purple-500" />
-            <h3 className="font-semibold text-lg">AI Phase Feedback</h3>
-            <p className="text-sm text-slate-600 mt-2">
+            <h3 className="text-lg font-semibold">AI Phase Feedback</h3>
+            <p className="mt-2 text-sm text-slate-600">
               Receive guided feedback on each phase based on key operational themes.
             </p>
           </div>

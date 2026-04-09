@@ -40,7 +40,7 @@ export default async function CreateSessionPage({
           )}
 
           <form
-            action="/simulation/session/create-session"
+            action="/admin/session/create-session"
             method="post"
             className="mt-6 space-y-5"
           >

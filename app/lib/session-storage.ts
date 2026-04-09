@@ -6,8 +6,30 @@ function getEmptySession(): SimulationSession {
   const now = new Date().toISOString();
 
   return {
-    scenarioId: "invasive-mussel",
-    currentStageId: "p1",
+    scenarioId: "",
+    scenarioSlug: "",
+    scenarioTitle: "",
+    currentStageId: "",
+    responses: {},
+    startedAt: now,
+    updatedAt: now,
+    overallSeverity: "manageable",
+  };
+}
+
+export function createFreshSession(options: {
+  scenarioId: string;
+  scenarioSlug: string;
+  scenarioTitle: string;
+  firstStageId: string;
+}): SimulationSession {
+  const now = new Date().toISOString();
+
+  return {
+    scenarioId: options.scenarioId,
+    scenarioSlug: options.scenarioSlug,
+    scenarioTitle: options.scenarioTitle,
+    currentStageId: options.firstStageId,
     responses: {},
     startedAt: now,
     updatedAt: now,
@@ -24,9 +46,7 @@ export function getStoredSession(): SimulationSession {
     const raw = window.localStorage.getItem(STORAGE_KEY);
 
     if (!raw) {
-      const fresh = getEmptySession();
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(fresh));
-      return fresh;
+      return getEmptySession();
     }
 
     const parsed = JSON.parse(raw) as SimulationSession;
@@ -37,9 +57,7 @@ export function getStoredSession(): SimulationSession {
       responses: parsed.responses || {},
     };
   } catch {
-    const fresh = getEmptySession();
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(fresh));
-    return fresh;
+    return getEmptySession();
   }
 }
 
@@ -56,6 +74,5 @@ export function saveStoredSession(session: SimulationSession) {
 
 export function resetStoredSession() {
   if (typeof window === "undefined") return;
-  const fresh = getEmptySession();
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(fresh));
+  window.localStorage.removeItem(STORAGE_KEY);
 }

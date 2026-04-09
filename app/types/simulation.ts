@@ -110,6 +110,8 @@ export interface StageResponse {
 
 export interface SimulationSession {
   scenarioId: string;
+  scenarioSlug: string;
+  scenarioTitle: string;
   currentStageId: string;
   responses: Record<string, StageResponse>;
   startedAt: string;

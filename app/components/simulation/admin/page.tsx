@@ -45,7 +45,7 @@ export default async function AdminPage() {
             </p>
 
             <div className="flex flex-wrap gap-3">
-              <Link href="/simulation/session/create">
+              <Link href="/admin/session/create">
                 <Button className="bg-cyan-600 hover:bg-cyan-700 text-white">
                   Create Session
                 </Button>
