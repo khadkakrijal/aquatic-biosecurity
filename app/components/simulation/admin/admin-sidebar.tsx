@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { LayoutDashboard, FolderKanban, Users } from "lucide-react";
+import { LayoutDashboard, FolderKanban, Users,File } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import LogoutButton from "@/app/components/simulation/log-outButton";
 
@@ -22,6 +22,11 @@ const navItems = [
     label: "Sessions",
     href: "/admin/session/create",
     icon: Users,
+  },
+  {
+    label: "Import Scenario",
+    href: "/admin/import",
+    icon: File,
   },
 ];
 

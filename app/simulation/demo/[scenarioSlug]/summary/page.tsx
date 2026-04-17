@@ -2,7 +2,6 @@ import { notFound } from "next/navigation";
 import { getScenarioBySlug } from "@/app/lib/scenario-loader";
 import SummaryPageClient from "./SummaryPageClient";
 
-
 interface PageProps {
   params: Promise<{
     scenarioSlug: string;

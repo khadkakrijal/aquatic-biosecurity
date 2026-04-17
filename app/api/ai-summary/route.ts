@@ -1,61 +1,97 @@
-import { openai } from "@/app/lib/ai-summary";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
-export async function POST(request: Request) {
+export async function POST(req: NextRequest) {
   try {
+    const body = await req.json();
+
+    const scenarioTitle = body?.scenarioTitle || "Simulation";
+    const summary = body?.summary || {};
+    const responses = body?.responses || [];
+
     if (!process.env.OPENAI_API_KEY) {
       return NextResponse.json(
-        { error: "OPENAI_API_KEY is missing. Add it to .env.local." },
+        { error: "Missing OPENAI_API_KEY in environment variables." },
         { status: 500 },
       );
     }
 
-    const body = await request.json();
-
     const prompt = `
-You are helping summarize an aquatic biosecurity preparedness exercise.
-
-Return a concise professional summary in plain text with these sections:
-1. Overall preparedness comment
-2. Main strengths demonstrated
-3. Main capability gaps or missed priorities
-4. How the scenario escalated over time
-5. One practical recommendation
-
-Important instructions:
-- Do NOT use pass/fail language
-- Do NOT describe the exercise like an exam or test
-- Do NOT use labels like strong, mixed, limited as headings
-- Write as if summarizing operational performance in a scenario-based preparedness exercise
-- Focus on practical response capability, coordination, decision-making, and risk consequences
-- If the user repeatedly gave weak or minimal answers, explain what was repeatedly lacking in operational terms
-- If the simulation followed a more pressured branch path, describe the operational consequences clearly
+You are helping summarise a biosecurity simulation exercise for a user.
 
 Scenario title:
-${body.scenarioTitle}
+${scenarioTitle}
 
-Summary object:
-${JSON.stringify(body.summary, null, 2)}
+Exercise summary:
+${JSON.stringify(summary, null, 2)}
 
 Responses:
-${JSON.stringify(body.responses, null, 2)}
+${JSON.stringify(responses, null, 2)}
+
+Write a clear, concise final summary in plain English.
+Keep it easy to understand.
+Use short paragraphs only.
+Include:
+1. Overall performance
+2. Main strengths
+3. Main repeated gaps
+4. What should improve next time
+5. Final takeaway
+
+Return JSON in this exact format:
+{
+  "feedback": "..."
+}
 `;
 
-    const response = await openai.responses.create({
-      model: "gpt-5.1",
-      input: prompt,
+    const openaiRes = await fetch("https://api.openai.com/v1/responses", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+      },
+      body: JSON.stringify({
+        model: "gpt-5.1",
+        input: prompt,
+      }),
     });
+
+    const data = await openaiRes.json();
+
+    if (!openaiRes.ok) {
+      console.error("OpenAI error:", data);
+      return NextResponse.json(
+        { error: data?.error?.message || "Failed to generate AI summary." },
+        { status: 500 },
+      );
+    }
+
+    const text =
+      data?.output?.[0]?.content?.[0]?.text ||
+      data?.output_text ||
+      "";
+
+    if (!text) {
+      return NextResponse.json(
+        { error: "AI summary returned no text." },
+        { status: 500 },
+      );
+    }
+
+    let parsed;
+    try {
+      parsed = JSON.parse(text);
+    } catch {
+      parsed = { feedback: text };
+    }
 
     return NextResponse.json({
-      feedback: response.output_text,
+      feedback: parsed.feedback || text,
     });
-  } catch (error: any) {
-    console.error("AI summary route error:", error);
+  } catch (error) {
+    console.error("ai-summary error", error);
 
     return NextResponse.json(
-      {
-        error: error?.message || "Unknown AI summary error",
-      },
+      { error: "Failed to generate final summary." },
       { status: 500 },
     );
   }

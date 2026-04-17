@@ -31,7 +31,7 @@ export default function StagePage() {
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [hasSubmitted, setHasSubmitted] = useState(false);
-  const [, setDecision] = useState<DecisionType | null>(null);
+  const [decision, setDecision] = useState<DecisionType | null>(null);
   const [, setNextScenarioText] = useState("");
   const [scenarioTextShown, setScenarioTextShown] = useState("");
 
@@ -216,6 +216,32 @@ export default function StagePage() {
     router.push(nextUrl);
   };
 
+  function getDecisionStyles(value: DecisionType | null) {
+    if (value === "strong") {
+      return {
+        wrapper: "border-emerald-200 bg-emerald-50 text-emerald-900",
+        badge: "bg-emerald-100 text-emerald-700",
+        title: "Strong response",
+      };
+    }
+
+    if (value === "mixed") {
+      return {
+        wrapper: "border-amber-200 bg-amber-50 text-amber-900",
+        badge: "bg-amber-100 text-amber-700",
+        title: "Partially covered",
+      };
+    }
+
+    return {
+      wrapper: "border-red-200 bg-red-50 text-red-900",
+      badge: "bg-red-100 text-red-700",
+      title: "Critical gaps identified",
+    };
+  }
+
+  const feedbackStyles = getDecisionStyles(decision);
+
   if (!stage) {
     return <main className="p-8">Stage not found.</main>;
   }
@@ -287,21 +313,45 @@ export default function StagePage() {
                 </div>
               )}
 
-              {feedback && (
-                <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-4">
-                  <h3 className="mb-2 font-semibold text-emerald-800">
-                    Feedback
-                  </h3>
-                  <p className="whitespace-pre-line text-sm leading-7 text-emerald-700">
-                    {feedback}
+              {isSubmitting && (
+                <div className="rounded-2xl border border-cyan-200 bg-cyan-50 px-4 py-4">
+                  <div className="mb-3 flex items-center justify-between gap-3">
+                    <h3 className="font-semibold text-cyan-800">
+                      Evaluating your response
+                    </h3>
+                    <Badge className="bg-cyan-100 text-cyan-700">
+                      In progress
+                    </Badge>
+                  </div>
+                  <div className="h-2.5 w-full overflow-hidden rounded-full bg-cyan-100">
+                    <div className="h-full w-2/3 animate-pulse rounded-full bg-cyan-600" />
+                  </div>
+                  <p className="mt-3 text-sm leading-7 text-cyan-700">
+                    Please wait while the platform reviews your answer against the
+                    key response criteria for this stage.
                   </p>
+                </div>
+              )}
+
+              {feedback && !isSubmitting && (
+                <div
+                  className={`rounded-2xl border px-4 py-4 ${feedbackStyles.wrapper}`}
+                >
+                  <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+                    <h3 className="font-semibold">Feedback</h3>
+                    <Badge className={feedbackStyles.badge}>
+                      {feedbackStyles.title}
+                    </Badge>
+                  </div>
+
+                  <p className="text-sm leading-7">{feedback}</p>
                 </div>
               )}
 
               <div className="flex flex-wrap gap-3">
                 <Button
                   variant="outline"
-                  onClick={() => router.push("/scenario/invasive-mussel")}
+                  onClick={() => router.push("/scenario")}
                 >
                   Back to Scenario
                 </Button>
@@ -330,16 +380,17 @@ export default function StagePage() {
               </CardHeader>
               <CardContent className="space-y-3 text-sm text-slate-600">
                 <p>
-                  Your answer is evaluated against hidden operational criteria.
+                  Your answer is reviewed against hidden operational criteria for
+                  this stage.
                 </p>
                 <p>
-                  The simulation always moves forward, but the next stage can
-                  branch into a more controlled or more pressured consequence
-                  pathway depending on what your response covered.
+                  The simulation always moves forward, but the next phase can
+                  shift into a more controlled or more pressured pathway
+                  depending on what your response covered.
                 </p>
                 <p>
-                  Feedback is shown after each answer so you can understand what
-                  was covered well and what important actions were missing.
+                  After each answer, feedback explains how well the major actions
+                  were addressed and whether important gaps remain.
                 </p>
               </CardContent>
             </Card>

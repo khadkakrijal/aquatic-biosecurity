@@ -11,6 +11,19 @@ import { ScenarioSeverity } from "@/app/types/simulation";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  BarChart,
+  Bar,
+  PieChart,
+  Pie,
+  Cell,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Legend,
+} from "recharts";
 
 interface StageResponse {
   stageId: string;
@@ -34,6 +47,10 @@ interface StageResponse {
     missedCriteriaTexts?: string[];
   };
 }
+
+const PIE_COLORS = ["#10b981", "#f59e0b", "#ef4444"];
+const BAR_COLOR = "#06b6d4";
+const SCORE_BAR_COLOR = "#2563eb";
 
 export default function SummaryPage() {
   const router = useRouter();
@@ -131,6 +148,63 @@ export default function SummaryPage() {
     });
   }, [stageResponses]);
 
+  const decisionBreakdown = useMemo(() => {
+    const counts = {
+      strong: 0,
+      mixed: 0,
+      limited: 0,
+    };
+
+    stageResponses.forEach((response) => {
+      const decision = response.evaluation?.decision;
+      if (decision === "strong") counts.strong += 1;
+      else if (decision === "mixed") counts.mixed += 1;
+      else counts.limited += 1;
+    });
+
+    return [
+      { name: "Strong", value: counts.strong },
+      { name: "Mixed", value: counts.mixed },
+      { name: "Limited", value: counts.limited },
+    ];
+  }, [stageResponses]);
+
+  const scoreTrend = useMemo(() => {
+    return stageResponses.map((response) => ({
+      phase: `P${response.phaseNumber}`,
+      score: response.evaluation?.score || 0,
+    }));
+  }, [stageResponses]);
+
+  const totalMatchedCriteria = useMemo(() => {
+    return stageResponses.reduce(
+      (sum, item) => sum + (item.evaluation?.matchedCriteriaIds?.length || 0),
+      0,
+    );
+  }, [stageResponses]);
+
+  const totalMissedRequired = useMemo(() => {
+    return stageResponses.reduce(
+      (sum, item) =>
+        sum + (item.evaluation?.missingRequiredCriteriaIds?.length || 0),
+      0,
+    );
+  }, [stageResponses]);
+
+  const fallbackSummary = useMemo(() => {
+    const topGaps = repeatedGaps.slice(0, 3).map((g) => g.text).join(", ");
+    const topThemes = repeatedThemes.slice(0, 3).map((t) => t.theme).join(", ");
+
+    return `You completed ${stageResponses.length} phase${stageResponses.length === 1 ? "" : "s"} in this simulation. Overall, the incident severity reached ${overallSeverity}. Across the exercise, you matched ${totalMatchedCriteria} criteria and missed ${totalMissedRequired} required criteria. The most repeated gaps were ${topGaps || "not clearly repeated"}, and the themes that appeared most often were ${topThemes || "not clearly repeated"}. This suggests the main improvement area is building more consistent coverage of the critical operational actions expected at each stage.`;
+  }, [
+    stageResponses.length,
+    overallSeverity,
+    totalMatchedCriteria,
+    totalMissedRequired,
+    repeatedGaps,
+    repeatedThemes,
+  ]);
+
   useEffect(() => {
     if (!stageResponses.length || aiFeedback) return;
 
@@ -182,17 +256,23 @@ export default function SummaryPage() {
           body: JSON.stringify(payload),
         });
 
-        const result = await res.json();
+        let result: any = {};
+        try {
+          result = await res.json();
+        } catch {
+          throw new Error("Summary API returned an invalid response.");
+        }
 
         if (!res.ok) {
           throw new Error(result?.error || "Failed to generate final summary.");
         }
 
-        setAiFeedback(result.feedback || "No summary feedback was generated.");
+        setAiFeedback(result.feedback || fallbackSummary);
       } catch (err: any) {
         setError(
           err?.message || "Something went wrong while generating the summary.",
         );
+        setAiFeedback(fallbackSummary);
       } finally {
         setSummaryLoading(false);
       }
@@ -208,15 +288,16 @@ export default function SummaryPage() {
     repeatedThemes,
     reflectionResponse,
     visitedPath,
+    fallbackSummary,
   ]);
 
   const handleRestart = () => {
     resetStoredSession();
-    router.push("/scenario/invasive-mussel");
+    router.push("/scenario");
   };
 
   const handleBackToScenario = () => {
-    router.push("/scenario/invasive-mussel");
+    router.push("/scenario");
   };
 
   const getSeverityBadgeClass = (severity?: ScenarioSeverity) => {
@@ -229,6 +310,32 @@ export default function SummaryPage() {
         return "bg-rose-600 text-white";
       default:
         return "bg-slate-200 text-slate-700";
+    }
+  };
+
+  const getDecisionBadgeClass = (decision?: "strong" | "mixed" | "limited") => {
+    switch (decision) {
+      case "strong":
+        return "bg-emerald-100 text-emerald-700";
+      case "mixed":
+        return "bg-amber-100 text-amber-700";
+      case "limited":
+        return "bg-red-100 text-red-700";
+      default:
+        return "bg-slate-100 text-slate-700";
+    }
+  };
+
+  const getFeedbackCardClass = (decision?: "strong" | "mixed" | "limited") => {
+    switch (decision) {
+      case "strong":
+        return "border-emerald-200 bg-emerald-50";
+      case "mixed":
+        return "border-amber-200 bg-amber-50";
+      case "limited":
+        return "border-red-200 bg-red-50";
+      default:
+        return "border-slate-200 bg-slate-50";
     }
   };
 
@@ -281,9 +388,55 @@ export default function SummaryPage() {
             Final Exercise Summary
           </h1>
           <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
-            This summary focuses on the main capability gaps, operational
-            pressures, branch pathway, and learning points across the exercise.
+            This summary highlights response quality, repeated gaps, branch
+            progression, and the main learning points across the exercise.
           </p>
+        </div>
+
+        <div className="mb-6 grid gap-4 md:grid-cols-4">
+          <Card className="rounded-3xl">
+            <CardContent className="p-5">
+              <p className="text-xs uppercase tracking-wide text-slate-500">
+                Completed phases
+              </p>
+              <p className="mt-2 text-3xl font-semibold text-slate-900">
+                {stageResponses.length}
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card className="rounded-3xl">
+            <CardContent className="p-5">
+              <p className="text-xs uppercase tracking-wide text-slate-500">
+                Matched criteria
+              </p>
+              <p className="mt-2 text-3xl font-semibold text-slate-900">
+                {totalMatchedCriteria}
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card className="rounded-3xl">
+            <CardContent className="p-5">
+              <p className="text-xs uppercase tracking-wide text-slate-500">
+                Missed required criteria
+              </p>
+              <p className="mt-2 text-3xl font-semibold text-slate-900">
+                {totalMissedRequired}
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card className="rounded-3xl">
+            <CardContent className="p-5">
+              <p className="text-xs uppercase tracking-wide text-slate-500">
+                Final reflection
+              </p>
+              <p className="mt-2 text-3xl font-semibold text-slate-900">
+                {reflectionResponse ? "Yes" : "No"}
+              </p>
+            </CardContent>
+          </Card>
         </div>
 
         <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
@@ -296,14 +449,12 @@ export default function SummaryPage() {
                 <p className="text-sm text-slate-600">
                   Generating final summary...
                 </p>
-              ) : aiFeedback ? (
-                <div className="whitespace-pre-line text-sm leading-7 text-slate-700">
-                  {aiFeedback}
-                </div>
               ) : (
-                <p className="text-sm text-slate-600">
-                  No final summary available.
-                </p>
+                <div className="rounded-2xl border bg-slate-50/70 p-5">
+                  <p className="text-sm leading-7 text-slate-700">
+                    {aiFeedback || fallbackSummary}
+                  </p>
+                </div>
               )}
 
               {error && (
@@ -334,46 +485,11 @@ export default function SummaryPage() {
                   </h3>
                   <ul className="space-y-2">
                     {visitedPath.map((item, index) => (
-                      <li
-                        key={`${item.stageId}-${index}`}
-                        className="leading-6"
-                      >
+                      <li key={`${item.stageId}-${index}`} className="leading-6">
                         {index + 1}. Phase {item.phaseNumber} — {item.title}{" "}
                         <span className="text-slate-400">
                           ({item.branchFamily}, {item.decision})
                         </span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-
-              {repeatedGaps.length > 0 && (
-                <div>
-                  <h3 className="mb-2 font-semibold text-slate-900">
-                    Repeated gaps noticed
-                  </h3>
-                  <ul className="space-y-2">
-                    {repeatedGaps.map((gap, index) => (
-                      <li key={`${gap.text}-${index}`} className="leading-6">
-                        - {gap.text}
-                        {gap.count > 1 ? ` (${gap.count} times)` : ""}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-
-              {repeatedThemes.length > 0 && (
-                <div>
-                  <h3 className="mb-2 font-semibold text-slate-900">
-                    Repeated missed themes
-                  </h3>
-                  <ul className="space-y-2">
-                    {repeatedThemes.map((theme, index) => (
-                      <li key={`${theme.theme}-${index}`} className="leading-6">
-                        - {theme.theme}
-                        {theme.count > 1 ? ` (${theme.count} times)` : ""}
                       </li>
                     ))}
                   </ul>
@@ -390,6 +506,112 @@ export default function SummaryPage() {
           </Card>
         </div>
 
+        <div className="mt-6 grid gap-6 lg:grid-cols-2">
+          <Card className="rounded-3xl">
+            <CardHeader>
+              <CardTitle>Response Quality Breakdown</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="h-[280px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={decisionBreakdown}
+                      dataKey="value"
+                      nameKey="name"
+                      cx="50%"
+                      cy="50%"
+                      outerRadius={90}
+                      label
+                    >
+                      {decisionBreakdown.map((entry, index) => (
+                        <Cell
+                          key={`cell-${entry.name}`}
+                          fill={PIE_COLORS[index % PIE_COLORS.length]}
+                        />
+                      ))}
+                    </Pie>
+                    <Tooltip />
+                    <Legend />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+              <p className="mt-3 text-sm leading-6 text-slate-600">
+                This chart shows how often your responses were rated strong,
+                mixed, or limited across the exercise.
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card className="rounded-3xl">
+            <CardHeader>
+              <CardTitle>Repeated Missed Themes</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="h-[280px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={repeatedThemes}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="theme" />
+                    <YAxis allowDecimals={false} />
+                    <Tooltip />
+                    <Bar dataKey="count" fill={BAR_COLOR} radius={[8, 8, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+              <p className="mt-3 text-sm leading-6 text-slate-600">
+                This chart highlights the themes that were missed most often.
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+
+        <div className="mt-6">
+          <Card className="rounded-3xl">
+            <CardHeader>
+              <CardTitle>Score Trend Across Phases</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="h-[280px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={scoreTrend}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="phase" />
+                    <YAxis allowDecimals={false} />
+                    <Tooltip />
+                    <Bar dataKey="score" fill={SCORE_BAR_COLOR} radius={[8, 8, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+              <p className="mt-3 text-sm leading-6 text-slate-600">
+                This shows how strongly each phase was covered based on matched
+                criteria.
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+
+        {repeatedGaps.length > 0 && (
+          <Card className="mt-6 rounded-3xl">
+            <CardHeader>
+              <CardTitle>Most Repeated Gaps</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {repeatedGaps.map((gap, index) => (
+                <div
+                  key={`${gap.text}-${index}`}
+                  className="rounded-2xl border bg-slate-50/70 p-4"
+                >
+                  <p className="text-sm leading-7 text-slate-700">
+                    {gap.text}
+                    {gap.count > 1 ? ` (${gap.count} times)` : ""}
+                  </p>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        )}
+
         {reflectionResponse && (
           <Card className="mt-6 rounded-3xl">
             <CardHeader>
@@ -397,7 +619,7 @@ export default function SummaryPage() {
             </CardHeader>
             <CardContent>
               <div className="rounded-2xl border bg-slate-50/70 p-5">
-                <p className="whitespace-pre-line text-sm leading-7 text-slate-700">
+                <p className="text-sm leading-7 text-slate-700">
                   {reflectionResponse.combinedAnswer}
                 </p>
               </div>
@@ -411,6 +633,10 @@ export default function SummaryPage() {
               (item) => item.id === response.stageId,
             );
 
+            const stageQuestions = stage?.questions || [];
+            const shouldShowBranchReason =
+              response.phaseNumber > 1 && Boolean(response.evaluation?.branchReason);
+
             return (
               <Card key={response.stageId} className="rounded-3xl">
                 <CardHeader>
@@ -420,7 +646,11 @@ export default function SummaryPage() {
                     </CardTitle>
 
                     {response.evaluation?.decision && (
-                      <Badge variant="outline" className="capitalize">
+                      <Badge
+                        className={getDecisionBadgeClass(
+                          response.evaluation.decision,
+                        )}
+                      >
                         {response.evaluation.decision}
                       </Badge>
                     )}
@@ -433,44 +663,106 @@ export default function SummaryPage() {
                   </div>
                 </CardHeader>
 
-                <CardContent className="space-y-4">
+                <CardContent className="space-y-5">
                   <div>
                     <h4 className="mb-2 font-semibold text-slate-900">
                       Situation shown
                     </h4>
-                    <p className="whitespace-pre-line text-sm leading-7 text-slate-600">
+                    <p className="text-sm leading-7 text-slate-600">
                       {response.scenarioTextShown}
                     </p>
                   </div>
 
-                  <div>
-                    <h4 className="mb-2 font-semibold text-slate-900">
-                      Your response
+                  <div className="space-y-4">
+                    <h4 className="font-semibold text-slate-900">
+                      Questions and your responses
                     </h4>
-                    <p className="whitespace-pre-line text-sm leading-7 text-slate-600">
-                      {response.combinedAnswer}
-                    </p>
+
+                    {stageQuestions.length > 0 ? (
+                      stageQuestions.map((question, index) => (
+                        <div
+                          key={question.id}
+                          className="rounded-2xl border bg-slate-50/70 p-4"
+                        >
+                          <p className="mb-2 text-sm font-medium text-slate-900">
+                            Question {index + 1}: {question.text}
+                          </p>
+                          <p className="text-sm leading-7 text-slate-600">
+                            {response.answers?.[question.id]?.trim() ||
+                              "No answer recorded for this question."}
+                          </p>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="rounded-2xl border bg-slate-50/70 p-4">
+                        <p className="text-sm leading-7 text-slate-600">
+                          {response.combinedAnswer}
+                        </p>
+                      </div>
+                    )}
                   </div>
 
                   {response.evaluation?.feedback && (
-                    <div>
+                    <div
+                      className={`rounded-2xl border p-4 ${getFeedbackCardClass(
+                        response.evaluation.decision,
+                      )}`}
+                    >
                       <h4 className="mb-2 font-semibold text-slate-900">
                         Feedback
                       </h4>
-                      <p className="whitespace-pre-line text-sm leading-7 text-slate-600">
+                      <p className="text-sm leading-7 text-slate-700">
                         {response.evaluation.feedback}
                       </p>
                     </div>
                   )}
 
-                  {response.evaluation?.branchReason && (
-                    <div>
+                  {shouldShowBranchReason && (
+                    <div className="rounded-2xl border bg-slate-50/70 p-4">
                       <h4 className="mb-2 font-semibold text-slate-900">
                         Why this branch happened
                       </h4>
                       <p className="text-sm leading-7 text-slate-600">
-                        {response.evaluation.branchReason}
+                        {response.evaluation?.branchReason}
                       </p>
+                    </div>
+                  )}
+
+                  {!!response.evaluation?.strengths?.length && (
+                    <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
+                      <h4 className="mb-2 font-semibold text-emerald-900">
+                        What you covered well
+                      </h4>
+                      <div className="flex flex-wrap gap-2">
+                        {response.evaluation.strengths.map((item, index) => (
+                          <Badge
+                            key={`${item}-${index}`}
+                            className="bg-emerald-100 text-emerald-700"
+                          >
+                            {item}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {!!response.evaluation?.missedCriteriaTexts?.length && (
+                    <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
+                      <h4 className="mb-2 font-semibold text-amber-900">
+                        Main gaps at this stage
+                      </h4>
+                      <div className="flex flex-wrap gap-2">
+                        {response.evaluation.missedCriteriaTexts.map(
+                          (item, index) => (
+                            <Badge
+                              key={`${item}-${index}`}
+                              className="bg-amber-100 text-amber-700"
+                            >
+                              {item}
+                            </Badge>
+                          ),
+                        )}
+                      </div>
                     </div>
                   )}
                 </CardContent>

@@ -15,27 +15,141 @@ type EvaluateStageRequest = {
 };
 
 function normaliseText(text: string) {
-  return text.toLowerCase().replace(/[^\w\s-]/g, " ");
+  return text
+    .toLowerCase()
+    .replace(/[^\w\s-]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function stemWord(word: string) {
+  const w = normaliseText(word);
+
+  if (w.length <= 4) return w;
+
+  const suffixes = ["ing", "ed", "es", "s"];
+  for (const suffix of suffixes) {
+    if (w.endsWith(suffix) && w.length > suffix.length + 2) {
+      return w.slice(0, -suffix.length);
+    }
+  }
+
+  return w;
+}
+
+function tokenize(text: string) {
+  return normaliseText(text)
+    .split(" ")
+    .map((word) => stemWord(word))
+    .filter(Boolean);
+}
+
+const SYNONYM_MAP: Record<string, string[]> = {
+  notify: ["inform", "alert", "advise", "report", "escalate", "communicate"],
+  reporting: ["notification", "escalation", "advice", "reporting"],
+  report: ["notify", "inform", "alert", "escalate"],
+  escalate: ["raise", "refer", "report", "notify"],
+  authority: ["agency", "department", "government", "regulator"],
+  containment: ["control", "restriction", "quarantine", "isolation"],
+  restrict: ["limit", "stop", "prevent", "block"],
+  movement: ["transport", "transfer", "relocation"],
+  surveillance: ["monitoring", "inspection", "sampling", "observation", "survey"],
+  inspection: ["check", "site visit", "assessment", "monitoring"],
+  tracing: ["trace", "track", "mapping", "pathway analysis"],
+  communication: ["messaging", "briefing", "advice", "guidance", "updates"],
+  stakeholders: ["industry", "growers", "operators", "partners", "community"],
+  guidance: ["advice", "instructions", "direction", "information"],
+  compliance: ["adherence", "following rules", "meeting requirements"],
+  biosecurity: ["disease control", "farm hygiene", "security controls"],
+  discharge: ["effluent", "water release", "water outflow"],
+  workforce: ["staff", "personnel", "team", "resourcing"],
+  recovery: ["transition", "restoration", "stand down", "close out"],
+  operator: ["producer", "grower", "manager"],
+  producer: ["grower", "operator", "farm owner"],
+  grower: ["producer", "operator"],
+};
+
+function expandToken(token: string) {
+  const stemmed = stemWord(token);
+  const synonyms = SYNONYM_MAP[stemmed] || [];
+  return [stemmed, ...synonyms.map((item) => stemWord(item))];
+}
+
+function keywordPhraseMatch(answer: string, keyword: string) {
+  const safeAnswer = normaliseText(answer);
+  const safeKeyword = normaliseText(keyword);
+
+  if (!safeKeyword) return false;
+
+  if (safeAnswer.includes(safeKeyword)) {
+    return true;
+  }
+
+  const keywordTokens = tokenize(safeKeyword);
+  const answerTokens = tokenize(safeAnswer);
+
+  if (!keywordTokens.length || !answerTokens.length) {
+    return false;
+  }
+
+  const answerTokenSet = new Set(answerTokens);
+
+  let matchedCount = 0;
+
+  for (const token of keywordTokens) {
+    const expanded = expandToken(token);
+    const hasMatch = expanded.some((candidate) => answerTokenSet.has(candidate));
+
+    if (hasMatch) {
+      matchedCount += 1;
+    }
+  }
+
+  const requiredTokenMatches =
+    keywordTokens.length <= 2
+      ? keywordTokens.length
+      : Math.max(2, Math.ceil(keywordTokens.length * 0.6));
+
+  return matchedCount >= requiredTokenMatches;
+}
+
+function criterionSemanticScore(answer: string, criterion: Criterion) {
+  const answerTokens = new Set(tokenize(answer));
+  const criterionTokens = tokenize(criterion.text);
+
+  if (!criterionTokens.length || !answerTokens.size) return 0;
+
+  let overlap = 0;
+
+  for (const token of criterionTokens) {
+    const expanded = expandToken(token);
+    if (expanded.some((candidate) => answerTokens.has(candidate))) {
+      overlap += 1;
+    }
+  }
+
+  return overlap / criterionTokens.length;
 }
 
 function keywordHitCount(answer: string, keywords: string[]) {
-  const safeAnswer = normaliseText(answer);
-
   return keywords.reduce((count, keyword) => {
-    const safeKeyword = normaliseText(keyword).trim();
-    if (!safeKeyword) return count;
-    return safeAnswer.includes(safeKeyword) ? count + 1 : count;
+    return keywordPhraseMatch(answer, keyword) ? count + 1 : count;
   }, 0);
 }
 
-function isCriterionMatched(answer: string, criterion: Criterion) {
+function getCriterionCoverageLevel(answer: string, criterion: Criterion) {
   const keywords = criterion.keywords || [];
-  if (!keywords.length) return false;
-
   const hits = keywordHitCount(answer, keywords);
-  const threshold = Math.min(2, Math.max(1, Math.ceil(keywords.length / 4)));
+  const semanticScore = criterionSemanticScore(answer, criterion);
 
-  return hits >= threshold;
+  if (hits >= 2 || semanticScore >= 0.6) return "strong";
+  if (hits >= 1 || semanticScore >= 0.35) return "partial";
+  return "missing";
+}
+
+function isCriterionMatched(answer: string, criterion: Criterion) {
+  const coverage = getCriterionCoverageLevel(answer, criterion);
+  return coverage === "strong" || coverage === "partial";
 }
 
 function getDecision(
@@ -99,7 +213,7 @@ function getBranchReason(
   nextStageId: string,
 ) {
   if (!nextStageId) {
-    return "The simulation has reached its end state and is now ready for final reflection and summary.";
+    return "The simulation has reached its final point for this stage and is ready to move into reflection and summary.";
   }
 
   if (missingRequiredCriteriaIds.length > 0) {
@@ -110,15 +224,15 @@ function getBranchReason(
     const leadMiss = missed[0];
 
     if (leadMiss) {
-      return `The response is moving into a more pressured consequence pathway because the answer did not cover the required criterion: "${leadMiss.text}".`;
+      return `The response is now moving into a more pressured pathway because one of the key expected actions was not addressed clearly enough: ${leadMiss.text}.`;
     }
   }
 
   if (matchedCriteriaIds.length > 0) {
-    return "The response covered the main required actions well enough to continue along the more controlled forward pathway.";
+    return "The response covered enough of the key actions to continue on a more controlled pathway into the next phase.";
   }
 
-  return "The response is progressing forward through the simulation, but with elevated consequence pressure due to limited coverage of the expected operational actions.";
+  return "The response is progressing forward, but with higher pressure because the expected operational actions were not covered clearly enough.";
 }
 
 function buildStrengths(stage: ScenarioStage, matchedCriteriaIds: string[]) {
@@ -157,14 +271,18 @@ function buildNextScenarioText(
   if (!stage.nextStageMap) return undefined;
 
   if (missingRequiredCriteriaIds.length > 0) {
-    return "Because some critical actions were missed or only partially addressed, the situation now progresses into a more pressured consequence pathway. The next phase reflects the operational impact of those gaps.";
+    return "Because some of the critical actions were missed or only covered partially, the next phase reflects a more pressured operational picture and the consequences of those gaps.";
   }
 
-  if (decision === "strong" || decision === "mixed") {
-    return "The response now moves forward into the next phase on a more controlled pathway. The next stage still becomes more complex, but the early actions taken have reduced some consequence pressure.";
+  if (decision === "strong") {
+    return "The response now moves into the next phase on a relatively controlled pathway. The situation still becomes more complex, but the actions taken so far have reduced some of the pressure.";
   }
 
-  return "The simulation continues forward, but the next stage reflects a more escalated operational picture because important actions were not covered strongly enough.";
+  if (decision === "mixed") {
+    return "The scenario continues forward on a workable path, but the next phase still carries extra pressure because some important elements were only partially addressed.";
+  }
+
+  return "The next phase reflects a more difficult operational picture because too many important actions were not covered clearly enough.";
 }
 
 function buildFeedback(
@@ -176,26 +294,36 @@ function buildFeedback(
   const matched = stage.criteria.filter((criterion) =>
     matchedCriteriaIds.includes(criterion.id),
   );
+
   const missed = stage.criteria.filter((criterion) =>
     missingRequiredCriteriaIds.includes(criterion.id),
   );
 
-  const strengthsText = matched.length
-    ? `Covered well: ${matched.map((item) => item.text).join("; ")}.`
-    : "Covered well: none of the major hidden criteria were clearly identified.";
+  if (decision === "strong") {
+    const matchedText = matched.length
+      ? matched.map((item) => item.text).join(", ")
+      : "the major expected response actions";
 
-  const gapsText = missed.length
-    ? `Important gaps: ${missed.map((item) => item.text).join("; ")}.`
-    : "Important gaps: no required criteria were missed.";
+    return `Your response showed a solid understanding of this stage and covered the main actions expected in the situation, especially ${matchedText}. The answer demonstrates that you recognised the key operational priorities clearly enough to keep the scenario on a more controlled pathway into the next phase.`;
+  }
 
-  const decisionText =
-    decision === "strong"
-      ? "Overall, this response was strong enough to keep the scenario on a more controlled forward path."
-      : decision === "mixed"
-      ? "Overall, this response covered some key actions but still left important gaps, so the scenario may continue with elevated pressure."
-      : "Overall, this response missed too many key actions, so the scenario will continue into a more pressured consequence pathway.";
+  if (decision === "mixed") {
+    const matchedText = matched.length
+      ? matched.map((item) => item.text).join(", ")
+      : "some of the expected operational actions";
 
-  return `${strengthsText}\n\n${gapsText}\n\n${decisionText}`;
+    const missedText = missed.length
+      ? missed.map((item) => item.text).join(", ")
+      : "a few important details";
+
+    return `Your response showed some good judgement and did identify important actions, including ${matchedText}. However, it did not fully cover all of the critical areas, and there were still important gaps around ${missedText}. Because of that, the scenario can continue, but with more pressure and less confidence than a stronger answer would have created.`;
+  }
+
+  const missedText = missed.length
+    ? missed.map((item) => item.text).join(", ")
+    : "several important operational actions";
+
+  return `Your response did not address enough of the critical priorities expected at this stage. In particular, it left major gaps around ${missedText}. Because those actions were not covered clearly enough, the scenario now moves into a more difficult consequence pathway where operational pressure and risk are higher.`;
 }
 
 export async function POST(req: NextRequest) {
@@ -218,13 +346,13 @@ export async function POST(req: NextRequest) {
         matchedCriteriaIds: [],
         missingRequiredCriteriaIds: [],
         feedback:
-          "Your final reflection has been saved. You can now move to the final simulation summary.",
+          "Your final reflection has been saved. The simulation can now move into the closing summary.",
         decision: "strong",
         scenarioSeverity: "manageable",
         nextScenarioText: undefined,
         nextStageId: "",
         branchReason:
-          "The simulation has reached its final reflection stage and is ready for summary generation.",
+          "The simulation has reached its final reflection point and is now ready for summary generation.",
         strengths: [],
         missedThemes: [],
         missedCriteriaTexts: [],
@@ -240,20 +368,26 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const weightedMatches = stage.criteria.reduce((total, criterion) => {
-      return total + (isCriterionMatched(userAnswer, criterion) ? criterion.weight || 1 : 0);
+    const criterionCoverage = stage.criteria.map((criterion) => ({
+      criterion,
+      matched: isCriterionMatched(userAnswer, criterion),
+      level: getCriterionCoverageLevel(userAnswer, criterion),
+    }));
+
+    const weightedMatches = criterionCoverage.reduce((total, item) => {
+      return total + (item.matched ? item.criterion.weight || 1 : 0);
     }, 0);
 
-    const matchedCriteriaIds = stage.criteria
-      .filter((criterion) => isCriterionMatched(userAnswer, criterion))
-      .map((criterion) => criterion.id);
+    const matchedCriteriaIds = criterionCoverage
+      .filter((item) => item.matched)
+      .map((item) => item.criterion.id);
 
-    const missingRequiredCriteriaIds = stage.criteria
+    const missingRequiredCriteriaIds = criterionCoverage
       .filter(
-        (criterion) =>
-          criterion.required && !matchedCriteriaIds.includes(criterion.id),
+        (item) =>
+          item.criterion.required && !matchedCriteriaIds.includes(item.criterion.id),
       )
-      .map((criterion) => criterion.id);
+      .map((item) => item.criterion.id);
 
     const requiredMet = missingRequiredCriteriaIds.length === 0;
 
