@@ -10,7 +10,7 @@ export type EvaluationDecision = "strong" | "mixed" | "limited";
 export type ScenarioSeverity = "manageable" | "elevated" | "severe";
 
 export interface EvaluationRules {
-  minScore: number;
+  minScore?: number;
   requiredCriteriaIds: string[];
 }
 
@@ -84,7 +84,6 @@ export interface Scenario {
 }
 
 export interface StageEvaluationResult {
-  score: number;
   matchedCriteriaIds: string[];
   missingRequiredCriteriaIds: string[];
   feedback: string;
@@ -119,4 +118,5 @@ export interface SimulationSession {
   overallSeverity?: ScenarioSeverity;
   completedAt?: string;
   finalSummary?: string;
+  attemptId?: string;
 }

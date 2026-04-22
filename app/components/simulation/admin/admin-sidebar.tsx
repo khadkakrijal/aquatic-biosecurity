@@ -1,5 +1,15 @@
+"use client";
+
 import Link from "next/link";
-import { LayoutDashboard, FolderKanban, Users,File } from "lucide-react";
+import { usePathname } from "next/navigation";
+import {
+  LayoutDashboard,
+  FolderKanban,
+  Users,
+  File,
+  UserCog,
+  Folder,
+} from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import LogoutButton from "@/app/components/simulation/log-outButton";
 
@@ -28,9 +38,21 @@ const navItems = [
     href: "/admin/import",
     icon: File,
   },
+  {
+    label: "Users",
+    href: "/admin/users",
+    icon: UserCog,
+  },
+  {
+    label: "Reports",
+    href: "/admin/reports",
+    icon: Folder,
+  },
 ];
 
 export default function AdminSidebar({ userEmail }: AdminSidebarProps) {
+  const pathname = usePathname();
+
   return (
     <aside className="w-full border-r bg-white lg:w-72">
       <div className="flex h-full flex-col">
@@ -56,11 +78,21 @@ export default function AdminSidebar({ userEmail }: AdminSidebarProps) {
           {navItems.map((item) => {
             const Icon = item.icon;
 
+            const isActive =
+              item.href === "/admin"
+                ? pathname === "/admin"
+                : pathname === item.href ||
+                  pathname.startsWith(item.href + "/");
+
             return (
               <Link
                 key={item.href}
                 href={item.href}
-                className="flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-slate-100 hover:text-slate-900"
+                className={`flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium transition ${
+                  isActive
+                    ? "bg-cyan-600 text-white"
+                    : "text-slate-700 hover:bg-slate-100 hover:text-slate-900"
+                }`}
               >
                 <Icon className="h-5 w-5" />
                 <span>{item.label}</span>

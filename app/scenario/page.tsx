@@ -7,6 +7,24 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 export default async function ScenarioListPage() {
   const supabase = await createClient();
 
+  // get user
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  // get role
+  let role: string | null = null;
+
+  if (user) {
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", user.id)
+      .maybeSingle();
+
+    role = profile?.role || null;
+  }
+
   const { data: scenarios, error } = await supabase
     .from("scenarios")
     .select("*")
@@ -16,14 +34,26 @@ export default async function ScenarioListPage() {
   return (
     <main className="min-h-screen bg-gradient-to-br from-cyan-50 via-white to-blue-100">
       <div className="mx-auto max-w-6xl px-6 py-10">
-        <div className="mb-10 text-center">
+        {/*  Header + Admin Button */}
+        <div className="mb-10 text-center relative">
           <Badge className="bg-cyan-600 text-white">Simulation Scenarios</Badge>
+
           <h1 className="mt-4 text-4xl font-semibold text-slate-900">
             Choose a Scenario
           </h1>
+
           <p className="mx-auto mt-3 max-w-2xl text-slate-600">
             Select a scenario to review its details and begin the simulation.
           </p>
+
+          {/* ✅ Admin button (top-right) */}
+          {role === "admin" && (
+            <div className="absolute right-0 top-0">
+              <Button asChild className="rounded-2xl bg-cyan-600 text-white">
+                <Link href="/admin">Go to Admin Panel</Link>
+              </Button>
+            </div>
+          )}
         </div>
 
         {error ? (

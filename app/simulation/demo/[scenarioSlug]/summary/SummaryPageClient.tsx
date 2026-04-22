@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import {
   getStoredSession,
   resetStoredSession,
+  saveStoredSession,
 } from "@/app/lib/session-storage";
 import { Scenario, ScenarioSeverity } from "@/app/types/simulation";
 import { Badge } from "@/components/ui/badge";
@@ -22,6 +23,7 @@ import {
   CartesianGrid,
   Legend,
 } from "recharts";
+import { completeSimulationAttemptAction } from "@/app/actions/simulation-attempts";
 
 interface StageResponse {
   stageId: string;
@@ -31,7 +33,6 @@ interface StageResponse {
   scenarioTextShown: string;
   submittedAt?: string;
   evaluation?: {
-    score?: number;
     feedback: string;
     decision?: "strong" | "mixed" | "limited";
     scenarioSeverity: ScenarioSeverity;
@@ -52,7 +53,7 @@ interface SummaryPageClientProps {
 
 const PIE_COLORS = ["#10b981", "#f59e0b", "#ef4444"];
 const THEME_BAR_COLOR = "#06b6d4";
-const SCORE_BAR_COLOR = "#2563eb";
+const COVERAGE_BAR_COLOR = "#2563eb";
 
 function ChartEmptyState({ message }: { message: string }) {
   return (
@@ -62,15 +63,34 @@ function ChartEmptyState({ message }: { message: string }) {
   );
 }
 
+function ChartCard({
+  title,
+  description,
+  children,
+}: {
+  title: string;
+  description: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <Card className="rounded-3xl">
+      <CardHeader>
+        <CardTitle>{title}</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="flex justify-center overflow-x-auto">{children}</div>
+        <p className="mt-3 text-sm leading-6 text-slate-600">{description}</p>
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function SummaryPageClient({
   scenario,
 }: SummaryPageClientProps) {
   const router = useRouter();
   const [responses, setResponses] = useState<Record<string, StageResponse>>({});
-  const [aiFeedback, setAiFeedback] = useState("");
   const [loading, setLoading] = useState(true);
-  const [summaryLoading, setSummaryLoading] = useState(false);
-  const [error, setError] = useState("");
 
   useEffect(() => {
     const session = getStoredSession();
@@ -153,7 +173,7 @@ export default function SummaryPageClient({
         stageId: response.stageId,
         phaseNumber: response.phaseNumber,
         title: stage?.title || response.stageId,
-        branchFamily: (stage as any)?.branchFamily || "unknown",
+        branchFamily: stage?.branchFamily || "unknown",
         decision: response.evaluation?.decision || "mixed",
         branchReason: response.evaluation?.branchReason || "",
       };
@@ -181,10 +201,11 @@ export default function SummaryPageClient({
     ].filter((item) => item.value > 0);
   }, [stageResponses]);
 
-  const scoreTrend = useMemo(() => {
+  const coverageTrend = useMemo(() => {
     return stageResponses.map((response) => ({
       phase: `P${response.phaseNumber}`,
-      score: response.evaluation?.score || 0,
+      matched: response.evaluation?.matchedCriteriaIds?.length || 0,
+      missed: response.evaluation?.missingRequiredCriteriaIds?.length || 0,
     }));
   }, [stageResponses]);
 
@@ -203,7 +224,7 @@ export default function SummaryPageClient({
     );
   }, [stageResponses]);
 
-  const fallbackSummary = useMemo(() => {
+  const localSummary = useMemo(() => {
     const topGaps = repeatedGaps
       .slice(0, 3)
       .map((g) => g.text)
@@ -213,104 +234,76 @@ export default function SummaryPageClient({
       .map((t) => t.theme)
       .join(", ");
 
-    return `You completed ${stageResponses.length} phase${stageResponses.length === 1 ? "" : "s"} in this simulation. The overall incident severity reached ${overallSeverity}. Across the exercise, you matched ${totalMatchedCriteria} criteria and missed ${totalMissedRequired} required criteria. The most repeated gaps were ${topGaps || "not clearly repeated"}, and the most repeated themes were ${topThemes || "not clearly repeated"}. Overall, the clearest improvement area is building more consistent coverage of the key operational actions expected at each stage.`;
+    const decisionCounts = {
+      strong: decisionBreakdown.find((d) => d.name === "Strong")?.value || 0,
+      mixed: decisionBreakdown.find((d) => d.name === "Mixed")?.value || 0,
+      limited: decisionBreakdown.find((d) => d.name === "Limited")?.value || 0,
+    };
+
+    let performanceLine =
+      "Overall, your responses showed mixed performance across the exercise.";
+
+    if (
+      decisionCounts.strong > decisionCounts.mixed &&
+      decisionCounts.strong > decisionCounts.limited
+    ) {
+      performanceLine =
+        "Overall, your responses showed strong performance across much of the exercise.";
+    } else if (
+      decisionCounts.limited >= decisionCounts.strong &&
+      decisionCounts.limited >= decisionCounts.mixed
+    ) {
+      performanceLine =
+        "Overall, your responses showed several important weaknesses across the exercise.";
+    }
+
+    return `${performanceLine} You completed ${stageResponses.length} phase${
+      stageResponses.length === 1 ? "" : "s"
+    } and the overall incident severity reached ${overallSeverity}. Across the simulation, you matched ${totalMatchedCriteria} criteria and missed ${totalMissedRequired} required criteria. The most repeated gaps were ${
+      topGaps || "not clearly repeated"
+    }, and the most repeated themes were ${
+      topThemes || "not clearly repeated"
+    }. The clearest improvement area is building more consistent coverage of the key operational actions expected at each stage.`;
   }, [
-    stageResponses.length,
+    decisionBreakdown,
     overallSeverity,
-    totalMatchedCriteria,
-    totalMissedRequired,
     repeatedGaps,
     repeatedThemes,
+    stageResponses.length,
+    totalMatchedCriteria,
+    totalMissedRequired,
   ]);
 
   useEffect(() => {
-    if (!stageResponses.length || aiFeedback) return;
-
-    const generateSummary = async () => {
+    const syncCompletion = async () => {
       try {
-        setSummaryLoading(true);
-        setError("");
+        const session = getStoredSession();
 
-        const payload = {
-          scenarioTitle: scenario.title,
-          summary: {
-            totalStages: stageResponses.length,
-            overallSeverity,
-            repeatedGaps,
-            repeatedThemes,
-            reflectionIncluded: Boolean(reflectionResponse),
-            visitedPath,
-          },
-          responses: orderedResponses.map((item) => ({
-            stageId: item.stageId,
-            phaseNumber: item.phaseNumber,
-            answers: item.answers,
-            combinedAnswer: item.combinedAnswer,
-            scenarioTextShown: item.scenarioTextShown,
-            evaluation: item.evaluation
-              ? {
-                  score: item.evaluation.score,
-                  feedback: item.evaluation.feedback,
-                  decision: item.evaluation.decision,
-                  scenarioSeverity: item.evaluation.scenarioSeverity,
-                  matchedCriteriaIds: item.evaluation.matchedCriteriaIds || [],
-                  missingRequiredCriteriaIds:
-                    item.evaluation.missingRequiredCriteriaIds || [],
-                  nextScenarioText: item.evaluation.nextScenarioText,
-                  nextStageId: item.evaluation.nextStageId,
-                  branchReason: item.evaluation.branchReason,
-                  strengths: item.evaluation.strengths || [],
-                  missedThemes: item.evaluation.missedThemes || [],
-                  missedCriteriaTexts:
-                    item.evaluation.missedCriteriaTexts || [],
-                }
-              : undefined,
-          })),
-        };
+        if (!session.attemptId) return;
+        if (session.completedAt) return;
 
-        const res = await fetch("/api/ai-summary", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(payload),
+        await completeSimulationAttemptAction({
+          attemptId: session.attemptId,
+          finalSummary: localSummary,
+          overallSeverity,
         });
 
-        let result: any = {};
-        try {
-          result = await res.json();
-        } catch {
-          throw new Error("Summary API returned an invalid response.");
-        }
-
-        if (!res.ok) {
-          throw new Error(result?.error || "Failed to generate final summary.");
-        }
-
-        setAiFeedback(result.feedback || fallbackSummary);
-      } catch (err: any) {
-        setError(
-          err?.message || "Something went wrong while generating the summary.",
-        );
-        setAiFeedback(fallbackSummary);
-      } finally {
-        setSummaryLoading(false);
+        saveStoredSession({
+          ...session,
+          completedAt: new Date().toISOString(),
+          finalSummary: localSummary,
+          overallSeverity,
+          updatedAt: new Date().toISOString(),
+        });
+      } catch (error) {
+        console.error("Failed to complete simulation attempt", error);
       }
     };
 
-    generateSummary();
-  }, [
-    scenario.title,
-    stageResponses,
-    aiFeedback,
-    orderedResponses,
-    overallSeverity,
-    repeatedGaps,
-    repeatedThemes,
-    reflectionResponse,
-    visitedPath,
-    fallbackSummary,
-  ]);
+    if (!loading && stageResponses.length > 0) {
+      syncCompletion();
+    }
+  }, [loading, localSummary, overallSeverity, stageResponses.length]);
 
   const firstStage = useMemo(() => {
     return scenario.stages
@@ -327,6 +320,7 @@ export default function SummaryPageClient({
   };
 
   const handleBackToStart = () => {
+    resetStoredSession();
     if (!firstStage) return;
     router.push("/scenario");
   };
@@ -411,34 +405,6 @@ export default function SummaryPageClient({
     );
   }
 
-  console.log("DEBUG", {
-    decisionBreakdown,
-    repeatedThemes,
-    scoreTrend,
-  });
-
-  function ChartCard({
-    title,
-    description,
-    children,
-  }: {
-    title: string;
-    description: string;
-    children: React.ReactNode;
-  }) {
-    return (
-      <Card className="rounded-3xl">
-        <CardHeader>
-          <CardTitle>{title}</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex justify-center overflow-x-auto">{children}</div>
-          <p className="mt-3 text-sm leading-6 text-slate-600">{description}</p>
-        </CardContent>
-      </Card>
-    );
-  }
-
   return (
     <main className="min-h-screen bg-gradient-to-br from-cyan-50 via-white to-blue-100">
       <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
@@ -512,23 +478,11 @@ export default function SummaryPageClient({
               <CardTitle>Preparedness Summary</CardTitle>
             </CardHeader>
             <CardContent>
-              {summaryLoading ? (
-                <p className="text-sm text-slate-600">
-                  Generating final summary...
+              <div className="rounded-2xl border bg-slate-50/70 p-5">
+                <p className="text-sm leading-7 text-slate-700">
+                  {localSummary}
                 </p>
-              ) : (
-                <div className="rounded-2xl border bg-slate-50/70 p-5">
-                  <p className="text-sm leading-7 text-slate-700">
-                    {aiFeedback || fallbackSummary}
-                  </p>
-                </div>
-              )}
-
-              {error && (
-                <div className="mt-4 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-                  {error}
-                </div>
-              )}
+              </div>
             </CardContent>
           </Card>
 
@@ -639,14 +593,14 @@ export default function SummaryPageClient({
 
         <div className="mt-6">
           <ChartCard
-            title="Score Trend Across Phases"
-            description="This shows how strongly each phase was covered based on matched criteria."
+            title="Criteria Coverage by Phase"
+            description="This chart compares matched criteria and missed required criteria across the completed phases."
           >
-            {scoreTrend.length > 0 ? (
+            {coverageTrend.length > 0 ? (
               <BarChart
                 width={900}
                 height={280}
-                data={scoreTrend}
+                data={coverageTrend}
                 margin={{ top: 10, right: 20, left: 0, bottom: 10 }}
               >
                 <CartesianGrid strokeDasharray="3 3" />
@@ -655,17 +609,24 @@ export default function SummaryPageClient({
                 <Tooltip />
                 <Legend />
                 <Bar
-                  dataKey="score"
-                  fill={SCORE_BAR_COLOR}
+                  dataKey="matched"
+                  fill={COVERAGE_BAR_COLOR}
+                  radius={[8, 8, 0, 0]}
+                  isAnimationActive={false}
+                />
+                <Bar
+                  dataKey="missed"
+                  fill="#f59e0b"
                   radius={[8, 8, 0, 0]}
                   isAnimationActive={false}
                 />
               </BarChart>
             ) : (
-              <ChartEmptyState message="No score trend data available yet." />
+              <ChartEmptyState message="No criteria coverage data available yet." />
             )}
           </ChartCard>
         </div>
+
         {repeatedGaps.length > 0 && (
           <Card className="mt-6 rounded-3xl">
             <CardHeader>
@@ -732,9 +693,9 @@ export default function SummaryPageClient({
                       </Badge>
                     )}
 
-                    {(stage as any)?.branchFamily && (
+                    {stage?.branchFamily && (
                       <Badge className="bg-slate-100 text-slate-700">
-                        {(stage as any).branchFamily}
+                        {stage.branchFamily}
                       </Badge>
                     )}
                   </div>

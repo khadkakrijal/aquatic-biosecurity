@@ -1,84 +1,130 @@
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Waves, ShieldAlert, Sparkles } from "lucide-react";
+import { createClient } from "@/utils/supabase/server";
+import StartSimulationButton from "./StartSimulationButton";
+import HomeUserMenu from "./HomeUserMenu";
 
-export default function HomePage() {
+export default async function HomePage() {
+  const supabase = await createClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  let role: string | null = null;
+  let fullName: string | null = user?.user_metadata?.full_name || null;
+
+  if (user) {
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("role, full_name")
+      .eq("id", user.id)
+      .maybeSingle();
+
+    role = profile?.role || null;
+    fullName = profile?.full_name || fullName;
+  }
+
   return (
-    <main className="min-h-screen relative overflow-hidden">
-      <div className="absolute inset-0 bg-gradient-to-br from-blue-100 via-white to-cyan-100" />
-      <div className="absolute top-0 left-0 h-[500px] w-[500px] rounded-full bg-blue-300/20 blur-3xl" />
-      <div className="absolute bottom-0 right-0 h-[500px] w-[500px] rounded-full bg-cyan-300/20 blur-3xl" />
-
-      <div className="relative z-10 mx-auto max-w-6xl px-6 py-10">
-        <div className="mb-16 space-y-6 text-center">
-          <Badge className="rounded-full bg-blue-600 px-4 py-1 text-white">
-            Aquatic Biosecurity Simulation
-          </Badge>
-
-          <h1 className="text-5xl font-semibold tracking-tight">
-            Smart Emergency Simulation Platform
-          </h1>
-
-          <p className="mx-auto max-w-2xl text-lg text-slate-600">
-            Explore realistic aquatic biosecurity emergency scenarios through
-            structured phases, free-text response, and AI-guided feedback.
+    <main
+      className="min-h-screen overflow-x-hidden bg-cover bg-center bg-no-repeat text-white"
+      style={{
+        backgroundImage:
+          "linear-gradient(135deg, rgba(6,12,28,0.9), rgba(8,48,73,0.8), rgba(17,24,39,0.9)), url('/biosecurity-bg.png')",
+      }}
+    >
+      <div className="flex min-h-screen flex-col">
+        <header className="flex items-center justify-between px-4 py-4 md:px-10">
+          <p className="text-xs uppercase tracking-[0.3em] text-cyan-300">
+            Biosecurity Simulation Platform
           </p>
 
-          <div className="flex flex-wrap items-center justify-center gap-4 pt-2">
-            <Button
-              asChild
-              size="lg"
-              className="group relative overflow-hidden rounded-2xl border-0 bg-gradient-to-r from-blue-600 via-cyan-500 to-blue-700 px-8 py-6 text-base font-medium text-white shadow-lg transition-all duration-300 hover:scale-[1.03] hover:shadow-cyan-200"
-            >
-              <Link href="/scenario">
-                <span className="relative z-10 flex items-center gap-2">
-                  Start Simulation
-                  <span className="transition-transform duration-300 group-hover:translate-x-1">
-                    →
-                  </span>
-                </span>
-                <span className="absolute inset-0 bg-white/10 opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
-              </Link>
-            </Button>
-
-            <Button
-              asChild
-              size="lg"
-              variant="outline"
-              className="rounded-2xl border-slate-300 bg-white/70 px-8 py-6 text-base font-medium shadow-sm backdrop-blur transition-all duration-300 hover:scale-[1.02] hover:bg-white hover:shadow-md"
-            >
-              <Link href="/admin">Admin View</Link>
-            </Button>
+          <div className="flex items-center gap-3">
+            {user && (
+              <HomeUserMenu
+                email={user.email || ""}
+                fullName={fullName}
+                role={role}
+              />
+            )}
           </div>
-        </div>
+        </header>
 
-        <div className="grid gap-6 md:grid-cols-3">
-          <div className="rounded-2xl border bg-white/70 p-6 shadow-sm backdrop-blur-lg">
-            <Waves className="mb-4 h-8 w-8 text-blue-600" />
-            <h3 className="text-lg font-semibold">Structured Phase Flow</h3>
-            <p className="mt-2 text-sm text-slate-600">
-              Progress through realistic multi-phase aquatic emergency scenarios.
-            </p>
-          </div>
+        <section className="flex flex-1 items-center justify-center px-4 py-8 md:px-10">
+          <div className="grid w-full max-w-6xl items-center gap-8 lg:grid-cols-2">
+            <div className="py-5">
+              <p className="mb-4 inline-flex rounded-full border border-cyan-300/40 bg-cyan-400/10 px-4 py-1.5 text-xs font-medium text-cyan-200 backdrop-blur-md">
+                Scenario-based incident response training
+              </p>
 
-          <div className="rounded-2xl border bg-white/70 p-6 shadow-sm backdrop-blur-lg">
-            <ShieldAlert className="mb-4 h-8 w-8 text-red-500" />
-            <h3 className="text-lg font-semibold">Adaptive Pathways</h3>
-            <p className="mt-2 text-sm text-slate-600">
-              Your responses shape what happens next, including escalation and
-              recovery pathways.
-            </p>
-          </div>
+              <h1 className="text-3xl font-semibold leading-tight sm:text-4xl md:text-5xl">
+                Practice real-world biosecurity response through simulation.
+              </h1>
 
-          <div className="rounded-2xl border bg-white/70 p-6 shadow-sm backdrop-blur-lg">
-            <Sparkles className="mb-4 h-8 w-8 text-purple-500" />
-            <h3 className="text-lg font-semibold">AI Phase Feedback</h3>
-            <p className="mt-2 text-sm text-slate-600">
-              Receive guided feedback on each phase based on key operational themes.
-            </p>
+              <p className="mt-5 max-w-2xl text-sm leading-7 text-slate-200 sm:text-base">
+                This platform provides structured training where participants
+                respond to evolving biosecurity incidents. Each decision affects
+                the direction of the simulation and helps build judgement,
+                prioritisation, and operational response skills.
+              </p>
+
+              <div className="mt-14 flex flex-wrap gap-4">
+                <StartSimulationButton isLoggedIn={!!user} />
+
+                {!user && (
+                  <>
+                    <Link
+                      href="/login"
+                      className="rounded-2xl border border-blue-300/70 bg-blue-500/20 px-6 py-3 text-sm font-semibold text-blue-50 transition hover:bg-blue-500/35"
+                    >
+                      Login
+                    </Link>
+                    <Link
+                      href="/register"
+                      className="rounded-2xl border border-emerald-300/70 bg-emerald-500/20 px-6 py-3 text-sm font-semibold text-emerald-50 transition hover:bg-emerald-500/35"
+                    >
+                      Register
+                    </Link>
+                  </>
+                )}
+              </div>
+            </div>
+
+            <div className="rounded-[30px] border border-white/15 bg-slate-950/40 p-6 shadow-2xl backdrop-blur-xl">
+              <div className="grid gap-5">
+                <div>
+                  <p className="text-xs uppercase tracking-[0.2em] text-cyan-300">
+                    How it works
+                  </p>
+                  <p className="mt-2 text-sm leading-6 text-slate-200">
+                    Participants progress through multiple scenario phases where
+                    the next stage depends on the quality and completeness of
+                    their response.
+                  </p>
+                </div>
+
+                <div>
+                  <p className="text-xs uppercase tracking-[0.2em] text-violet-300">
+                    Decision-based learning
+                  </p>
+                  <p className="mt-2 text-sm leading-6 text-slate-200">
+                    The platform uses free-text responses to support realistic
+                    thinking and practical incident response planning.
+                  </p>
+                </div>
+
+                <div>
+                  <p className="text-xs uppercase tracking-[0.2em] text-emerald-300">
+                    Training objective
+                  </p>
+                  <p className="mt-2 text-sm leading-6 text-slate-200">
+                    Improve preparedness for biosecurity incidents in a safe,
+                    guided, and structured simulation environment.
+                  </p>
+                </div>
+              </div>
+            </div>
           </div>
-        </div>
+        </section>
       </div>
     </main>
   );

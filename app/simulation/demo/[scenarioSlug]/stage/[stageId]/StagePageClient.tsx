@@ -2,14 +2,19 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { getStoredSession, saveStoredSession } from "@/app/lib/session-storage";
 import {
-  getStoredSession,
-  saveStoredSession,
-} from "@/app/lib/session-storage";
-import { Scenario, ScenarioSeverity, ScenarioStage } from "@/app/types/simulation";
+  Scenario,
+  ScenarioSeverity,
+  ScenarioStage,
+} from "@/app/types/simulation";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  saveStageAttemptAction,
+  startSimulationAttemptAction,
+} from "@/app/actions/simulation-attempts";
 
 type DecisionType = "strong" | "mixed" | "limited";
 
@@ -47,6 +52,42 @@ export default function StagePageClient({
   }, [stage.id]);
 
   useEffect(() => {
+    const initialiseAttempt = async () => {
+      try {
+        const session = getStoredSession();
+
+        if (!session.attemptId) {
+          const firstStage = scenario.stages
+            .filter((item) => item.phaseNumber === 1)
+            .sort((a, b) => a.id.localeCompare(b.id))[0];
+
+          const attempt = await startSimulationAttemptAction({
+            scenarioSlug: scenario.slug,
+            firstStageId: firstStage?.id || stage.id,
+            totalStages: 6,
+          });
+
+          saveStoredSession({
+            ...session,
+            attemptId: attempt.id,
+            scenarioId: scenario.id,
+            scenarioSlug: scenario.slug,
+            scenarioTitle: scenario.title,
+            currentStageId: session.currentStageId || stage.id,
+            startedAt: session.startedAt || new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            responses: session.responses || {},
+          });
+        }
+      } catch (err) {
+        console.error("Failed to initialise attempt", err);
+      }
+    };
+
+    initialiseAttempt();
+  }, [scenario, stage.id]);
+
+  useEffect(() => {
     const session = getStoredSession();
     const existing = session.responses?.[stage.id];
 
@@ -55,7 +96,9 @@ export default function StagePageClient({
       setFeedback(existing.evaluation?.feedback || "");
       setDecision(existing.evaluation?.decision || null);
       setNextScenarioText(existing.evaluation?.nextScenarioText || "");
-      setScenarioTextShown(existing.scenarioTextShown || stage.baseScenarioText);
+      setScenarioTextShown(
+        existing.scenarioTextShown || stage.baseScenarioText,
+      );
       setHasSubmitted(Boolean(existing.evaluation));
       setError("");
       return;
@@ -66,7 +109,8 @@ export default function StagePageClient({
     );
 
     setScenarioTextShown(
-      previousLinkedResponse?.evaluation?.nextScenarioText || stage.baseScenarioText,
+      previousLinkedResponse?.evaluation?.nextScenarioText ||
+        stage.baseScenarioText,
     );
     setAnswers({});
     setFeedback("");
@@ -112,7 +156,9 @@ export default function StagePageClient({
       setIsSubmitting(true);
 
       const session = getStoredSession();
-      const previousResponse = orderedResponses[orderedResponses.length - 1] as any;
+      const previousResponse = orderedResponses[
+        orderedResponses.length - 1
+      ] as any;
       const previousDecision = previousResponse?.evaluation?.decision || "none";
 
       const res = await fetch("/api/evaluate-stage", {
@@ -144,6 +190,7 @@ export default function StagePageClient({
         scenarioSlug: scenario.slug,
         scenarioTitle: scenario.title,
         currentStageId: stage.id,
+        updatedAt: new Date().toISOString(),
         overallSeverity: mergeOverallSeverity(
           session.overallSeverity,
           result.scenarioSeverity,
@@ -158,7 +205,6 @@ export default function StagePageClient({
             scenarioTextShown,
             submittedAt: new Date().toISOString(),
             evaluation: {
-              score: result.score,
               matchedCriteriaIds: result.matchedCriteriaIds,
               missingRequiredCriteriaIds: result.missingRequiredCriteriaIds,
               feedback: result.feedback,
@@ -176,6 +222,29 @@ export default function StagePageClient({
       };
 
       saveStoredSession(updatedSession);
+
+      if (session.attemptId) {
+        await saveStageAttemptAction({
+          attemptId: session.attemptId,
+          scenarioSlug: scenario.slug,
+          stageId: stage.id,
+          phaseNumber: stage.phaseNumber,
+          answers,
+          combinedAnswer,
+          scenarioTextShown,
+          decision: result.decision,
+          feedback: result.feedback,
+          scenarioSeverity: result.scenarioSeverity,
+          nextScenarioText: result.nextScenarioText,
+          nextStageId: result.nextStageId,
+          branchReason: result.branchReason,
+          matchedCriteriaIds: result.matchedCriteriaIds || [],
+          missingRequiredCriteriaIds: result.missingRequiredCriteriaIds || [],
+          strengths: result.strengths || [],
+          missedThemes: result.missedThemes || [],
+          missedCriteriaTexts: result.missedCriteriaTexts || [],
+        });
+      }
     } catch (err: any) {
       setError(err?.message || "Something went wrong while submitting.");
     } finally {
@@ -208,6 +277,7 @@ export default function StagePageClient({
       scenarioSlug: scenario.slug,
       scenarioTitle: scenario.title,
       currentStageId: nextStageId,
+      updatedAt: new Date().toISOString(),
     });
 
     const nextUrl = sessionCode
@@ -238,7 +308,9 @@ export default function StagePageClient({
           <div className="mb-3 flex flex-wrap gap-2">
             <Badge className="bg-cyan-600 text-white">{scenario.title}</Badge>
             <Badge variant="outline">
-              {isCompletionStage ? "Final Reflection" : `Phase ${stage.phaseNumber}`}
+              {isCompletionStage
+                ? "Final Reflection"
+                : `Phase ${stage.phaseNumber}`}
             </Badge>
             <Badge className="bg-slate-100 text-slate-700">
               {stage.timeframe || "No timeframe"}
@@ -250,7 +322,9 @@ export default function StagePageClient({
             )}
           </div>
 
-          <h1 className="text-3xl font-semibold text-slate-900">{stage.title}</h1>
+          <h1 className="text-3xl font-semibold text-slate-900">
+            {stage.title}
+          </h1>
         </div>
 
         <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
@@ -317,8 +391,8 @@ export default function StagePageClient({
                     {isSubmitting
                       ? "Evaluating..."
                       : isCompletionStage
-                      ? "Submit Final Reflection"
-                      : "Submit Response"}
+                        ? "Submit Final Reflection"
+                        : "Submit Response"}
                   </Button>
                 ) : (
                   <Button onClick={handleNextStage}>
@@ -335,15 +409,17 @@ export default function StagePageClient({
                 <CardTitle>How this works</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3 text-sm text-slate-600">
-                <p>Your answer is evaluated against hidden operational criteria.</p>
                 <p>
-                  The simulation always moves forward, but the next stage can branch
-                  into a more controlled or more pressured consequence pathway
-                  depending on what your response covered.
+                  Your answer is evaluated against hidden operational criteria.
                 </p>
                 <p>
-                  Feedback is shown after each answer so you can understand what was
-                  covered well and what important actions were missing.
+                  The simulation always moves forward, but the next stage can
+                  branch into a more controlled or more pressured consequence
+                  pathway depending on what your response covered.
+                </p>
+                <p>
+                  Feedback is shown after each answer so you can understand what
+                  was covered well and what important actions were missing.
                 </p>
               </CardContent>
             </Card>

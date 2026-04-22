@@ -153,13 +153,31 @@ function isCriterionMatched(answer: string, criterion: Criterion) {
 }
 
 function getDecision(
-  score: number,
-  requiredMet: boolean,
-  missingRequiredCount: number,
-  minScore: number,
+  stage: ScenarioStage,
+  matchedCriteriaIds: string[],
+  missingRequiredCriteriaIds: string[],
 ): EvaluationDecision {
-  if (requiredMet && score >= minScore + 1) return "strong";
-  if (missingRequiredCount <= 1 && score >= Math.max(1, minScore - 1)) return "mixed";
+  const totalCriteria = stage.criteria.length || 1;
+  const matchedCount = matchedCriteriaIds.length;
+  const missingRequiredCount = missingRequiredCriteriaIds.length;
+  const requiredCriteriaCount = stage.criteria.filter((criterion) => criterion.required).length;
+  const requiredMatchedCount = requiredCriteriaCount - missingRequiredCount;
+  const coverageRatio = matchedCount / totalCriteria;
+
+  if (
+    missingRequiredCount === 0 &&
+    (coverageRatio >= 0.67 || requiredMatchedCount === requiredCriteriaCount)
+  ) {
+    return "strong";
+  }
+
+  if (
+    missingRequiredCount <= 1 &&
+    (coverageRatio >= 0.34 || requiredMatchedCount >= Math.max(1, requiredCriteriaCount - 1))
+  ) {
+    return "mixed";
+  }
+
   return "limited";
 }
 
@@ -212,7 +230,7 @@ function getBranchReason(
   missingRequiredCriteriaIds: string[],
   nextStageId: string,
 ) {
-  if (!nextStageId) {
+  if (!nextStageId || nextStageId === "complete") {
     return "The simulation has reached its final point for this stage and is ready to move into reflection and summary.";
   }
 
@@ -342,7 +360,6 @@ export async function POST(req: NextRequest) {
 
     if (stage.id === "complete") {
       const result: StageEvaluationResult = {
-        score: 0,
         matchedCriteriaIds: [],
         missingRequiredCriteriaIds: [],
         feedback:
@@ -374,10 +391,6 @@ export async function POST(req: NextRequest) {
       level: getCriterionCoverageLevel(userAnswer, criterion),
     }));
 
-    const weightedMatches = criterionCoverage.reduce((total, item) => {
-      return total + (item.matched ? item.criterion.weight || 1 : 0);
-    }, 0);
-
     const matchedCriteriaIds = criterionCoverage
       .filter((item) => item.matched)
       .map((item) => item.criterion.id);
@@ -389,13 +402,10 @@ export async function POST(req: NextRequest) {
       )
       .map((item) => item.criterion.id);
 
-    const requiredMet = missingRequiredCriteriaIds.length === 0;
-
     const decision = getDecision(
-      weightedMatches,
-      requiredMet,
-      missingRequiredCriteriaIds.length,
-      stage.passingRules.minScore,
+      stage,
+      matchedCriteriaIds,
+      missingRequiredCriteriaIds,
     );
 
     const scenarioSeverity = getScenarioSeverity(stage.phaseNumber, decision);
@@ -429,7 +439,6 @@ export async function POST(req: NextRequest) {
     );
 
     const result: StageEvaluationResult = {
-      score: weightedMatches,
       matchedCriteriaIds,
       missingRequiredCriteriaIds,
       feedback,

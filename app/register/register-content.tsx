@@ -4,34 +4,39 @@ import Link from "next/link";
 import { useState } from "react";
 import Swal from "sweetalert2";
 import { createClient } from "@/utils/supabase/client";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 
-export default function LoginContent() {
+export default function RegisterContent() {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const next = searchParams.get("next") || "/";
 
+  const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loadingEmail, setLoadingEmail] = useState(false);
   const [loadingGoogle, setLoadingGoogle] = useState(false);
 
-  const handleEmailLogin = async (e: React.FormEvent) => {
+  const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoadingEmail(true);
 
     try {
       const supabase = createClient();
 
-      const { error } = await supabase.auth.signInWithPassword({
+      const { error } = await supabase.auth.signUp({
         email,
         password,
+        options: {
+          data: {
+            full_name: fullName,
+          },
+          emailRedirectTo: `${window.location.origin}/auth/callback?next=/`,
+        },
       });
 
       if (error) {
         await Swal.fire({
           icon: "error",
-          title: "Login failed",
+          title: "Registration failed",
           text: error.message,
           confirmButtonColor: "#0891b2",
         });
@@ -40,20 +45,18 @@ export default function LoginContent() {
 
       await Swal.fire({
         icon: "success",
-        title: "Login successful",
-        text: "Welcome back.",
-        timer: 1200,
-        showConfirmButton: false,
+        title: "Account created",
+        text: "Please check your email if confirmation is required.",
+        confirmButtonColor: "#0891b2",
       });
 
-      router.push(next);
-      router.refresh();
+      router.push("/login");
     } finally {
       setLoadingEmail(false);
     }
   };
 
-  const handleGoogleLogin = async () => {
+  const handleGoogleRegister = async () => {
     setLoadingGoogle(true);
 
     try {
@@ -62,16 +65,14 @@ export default function LoginContent() {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
-          redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(
-            next,
-          )}`,
+          redirectTo: `${window.location.origin}/auth/callback?next=/`,
         },
       });
 
       if (error) {
         await Swal.fire({
           icon: "error",
-          title: "Google login failed",
+          title: "Google registration failed",
           text: error.message,
           confirmButtonColor: "#0891b2",
         });
@@ -84,12 +85,27 @@ export default function LoginContent() {
   return (
     <main className="min-h-screen flex items-center justify-center p-6 bg-slate-50">
       <div className="w-full max-w-md rounded-2xl border bg-white p-6 shadow-sm">
-        <h1 className="mb-2 text-2xl font-semibold text-slate-900">Login</h1>
+        <h1 className="mb-2 text-2xl font-semibold text-slate-900">
+          Create account
+        </h1>
         <p className="mb-6 text-sm text-slate-600">
-          Sign in to continue to the platform.
+          Register to use the simulation platform.
         </p>
 
-        <form onSubmit={handleEmailLogin} className="space-y-4">
+        <form onSubmit={handleRegister} className="space-y-4">
+          <div>
+            <label className="mb-2 block text-sm font-medium text-slate-900">
+              Full name
+            </label>
+            <input
+              type="text"
+              value={fullName}
+              onChange={(e) => setFullName(e.target.value)}
+              required
+              className="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-cyan-500"
+            />
+          </div>
+
           <div>
             <label className="mb-2 block text-sm font-medium text-slate-900">
               Email
@@ -121,7 +137,7 @@ export default function LoginContent() {
             disabled={loadingEmail}
             className="w-full rounded-xl bg-cyan-600 px-4 py-3 text-white transition hover:bg-cyan-700 disabled:opacity-60"
           >
-            {loadingEmail ? "Signing in..." : "Sign in"}
+            {loadingEmail ? "Creating account..." : "Create account"}
           </button>
         </form>
 
@@ -132,22 +148,16 @@ export default function LoginContent() {
         </div>
 
         <button
-          onClick={handleGoogleLogin}
+          onClick={handleGoogleRegister}
           disabled={loadingGoogle}
           className="w-full rounded-xl bg-black px-4 py-3 text-white transition hover:bg-gray-800 disabled:opacity-60"
         >
           {loadingGoogle ? "Redirecting..." : "Continue with Google"}
         </button>
 
-        <div className="mt-6 flex items-center justify-between text-sm">
-          <Link href="/register" className="text-cyan-700 hover:underline">
-            Create account
-          </Link>
-          <Link
-            href="/forgot-password"
-            className="text-cyan-700 hover:underline"
-          >
-            Forgot password?
+        <div className="mt-6 text-sm">
+          <Link href="/login" className="text-cyan-700 hover:underline">
+            Already have an account? Sign in
           </Link>
         </div>
       </div>
