@@ -36,8 +36,19 @@ export default async function ScenarioListPage() {
       <div className="mx-auto max-w-6xl px-6 py-10">
         {/*  Header + Admin Button */}
         <div className="mb-10 text-center relative">
-          <Badge className="bg-cyan-600 text-white">Simulation Scenarios</Badge>
-
+          <div className=" flex justify-between items-center gap-5">
+            <Badge className="bg-cyan-600 text-white py-4">
+              Simulation Scenarios
+            </Badge>
+            {role === "admin" && (
+              <Button
+                asChild
+                className=" w-fit rounded-2xl bg-cyan-600 text-white py-4 text-xs"
+              >
+                <Link href="/admin">Go to Admin Panel</Link>
+              </Button>
+            )}
+          </div>
           <h1 className="mt-4 text-4xl font-semibold text-slate-900">
             Choose a Scenario
           </h1>
@@ -45,15 +56,6 @@ export default async function ScenarioListPage() {
           <p className="mx-auto mt-3 max-w-2xl text-slate-600">
             Select a scenario to review its details and begin the simulation.
           </p>
-
-          {/* ✅ Admin button (top-right) */}
-          {role === "admin" && (
-            <div className="absolute right-0 top-0">
-              <Button asChild className="rounded-2xl bg-cyan-600 text-white">
-                <Link href="/admin">Go to Admin Panel</Link>
-              </Button>
-            </div>
-          )}
         </div>
 
         {error ? (
