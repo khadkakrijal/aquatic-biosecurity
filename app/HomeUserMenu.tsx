@@ -100,8 +100,8 @@ export default function HomeUserMenu({
         <div className="absolute right-0  z-[100] w-80 rounded-3xl bg-cyan-600 p-4 shadow-2xl shadow-black/40">
           <div className="rounded-2xl  p-4">
             <div className="flex items-center gap-3">
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-cyan-600 text-base font-semibold text-white shadow-md">
-                {/* {avatarLetter} */}
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-cyan-800 text-base font-semibold text-white shadow-md">
+                {avatarLetter}
               </div>
 
               <div className="min-w-0">

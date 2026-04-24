@@ -302,41 +302,59 @@ export default function StagePageClient({
   };
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-cyan-50 via-white to-blue-100">
-      <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6 lg:px-8">
-        <div className="mb-6">
+    <main
+      className="min-h-screen bg-cover bg-center bg-no-repeat"
+      style={{
+        backgroundImage:
+          "linear-gradient(135deg, rgba(6,12,28,0.9), rgba(8,48,73,0.65), rgba(17,24,39,0.92)), url('/biosecurity-bg.png')",
+      }}
+    >
+      <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
+        <div className="mb-6 rounded-3xl border border-white/10 bg-white/10 p-6 text-white shadow-2xl backdrop-blur-md">
           <div className="mb-3 flex flex-wrap gap-2">
-            <Badge className="bg-cyan-600 text-white">{scenario.title}</Badge>
-            <Badge variant="outline">
+            <Badge className="border-0 bg-cyan-500 text-white">
+              {scenario.title}
+            </Badge>
+
+            <Badge className="border border-white/20 bg-white/10 text-white">
               {isCompletionStage
                 ? "Final Reflection"
                 : `Phase ${stage.phaseNumber}`}
             </Badge>
-            <Badge className="bg-slate-100 text-slate-700">
-              {stage.timeframe || "No timeframe"}
-            </Badge>
+
+            {stage.timeframe && (
+              <Badge className="border border-cyan-200/30 bg-cyan-500/20 text-cyan-100">
+                {stage.timeframe}
+              </Badge>
+            )}
+
             {sessionCode && (
-              <Badge className="bg-indigo-100 text-indigo-700">
+              <Badge className="border border-indigo-200/30 bg-indigo-500/20 text-indigo-100">
                 Session: {sessionCode}
               </Badge>
             )}
           </div>
 
-          <h1 className="text-3xl font-semibold text-slate-900">
+          <h1 className="text-3xl font-bold tracking-tight md:text-4xl">
             {stage.title}
           </h1>
+
+          <p className="mt-3 max-w-3xl text-sm leading-7 text-slate-200">
+            Read the situation carefully and provide your response based on the
+            operational priorities you would consider in this phase.
+          </p>
         </div>
 
-        <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
-          <Card className="rounded-3xl">
+        <div className="grid gap-6 lg:grid-cols-[1.25fr_0.75fr]">
+          <Card className="rounded-3xl border-0 bg-white/95 shadow-2xl">
             <CardHeader>
-              <CardTitle>
+              <CardTitle className="text-slate-900">
                 {isCompletionStage ? "Final Reflection" : "Situation"}
               </CardTitle>
             </CardHeader>
 
             <CardContent className="space-y-6">
-              <div className="rounded-2xl border bg-slate-50/70 p-5">
+              <div className="rounded-2xl border border-cyan-100 bg-cyan-50/70 p-5">
                 <p className="text-sm leading-7 text-slate-700">
                   {scenarioTextShown}
                 </p>
@@ -344,10 +362,12 @@ export default function StagePageClient({
 
               {stage.questions.map((q, index) => (
                 <div key={q.id} className="space-y-2">
-                  <label className="block text-sm font-medium text-slate-900">
+                  <label className="block text-sm font-semibold text-slate-900">
                     Question {index + 1}
                   </label>
-                  <p className="text-sm text-slate-600">{q.text}</p>
+
+                  <p className="text-sm leading-6 text-slate-600">{q.text}</p>
+
                   <textarea
                     value={answers[q.id] || ""}
                     onChange={(e) =>
@@ -357,8 +377,8 @@ export default function StagePageClient({
                       }))
                     }
                     rows={8}
-                    className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none focus:border-cyan-500 focus:ring-2 focus:ring-cyan-200"
-                    placeholder={q.placeholder}
+                    className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-cyan-500 focus:ring-2 focus:ring-cyan-200 disabled:bg-slate-100"
+                    placeholder={q.placeholder || "Write your response here..."}
                     disabled={isSubmitting || hasSubmitted}
                   />
                 </div>
@@ -371,23 +391,31 @@ export default function StagePageClient({
               )}
 
               {feedback && (
-                <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-4">
-                  <h3 className="mb-2 font-semibold text-emerald-800">
+                <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-5 py-4">
+                  <h3 className="mb-2 font-semibold text-emerald-900">
                     Feedback
                   </h3>
-                  <p className="whitespace-pre-line text-sm leading-7 text-emerald-700">
+                  <p className="whitespace-pre-line text-sm leading-7 text-emerald-800">
                     {feedback}
                   </p>
                 </div>
               )}
 
-              <div className="flex flex-wrap gap-3">
-                <Button variant="outline" onClick={handleBackToStart}>
+              <div className="flex flex-wrap gap-3 pt-2">
+                <Button
+                  variant="outline"
+                  onClick={handleBackToStart}
+                  className="rounded-2xl border-cyan-200 bg-white px-5 py-2.5 text-cyan-700 transition hover:border-cyan-400 hover:bg-cyan-50"
+                >
                   Back to Start
                 </Button>
 
                 {!hasSubmitted ? (
-                  <Button onClick={handleSubmit} disabled={isSubmitting}>
+                  <Button
+                    onClick={handleSubmit}
+                    disabled={isSubmitting}
+                    className="rounded-2xl bg-cyan-600 px-6 py-2.5 font-semibold text-white shadow-md transition-all hover:-translate-y-0.5 hover:bg-cyan-700 hover:shadow-lg disabled:translate-y-0 disabled:opacity-60"
+                  >
                     {isSubmitting
                       ? "Evaluating..."
                       : isCompletionStage
@@ -395,7 +423,10 @@ export default function StagePageClient({
                         : "Submit Response"}
                   </Button>
                 ) : (
-                  <Button onClick={handleNextStage}>
+                  <Button
+                    onClick={handleNextStage}
+                    className="rounded-2xl bg-cyan-600 px-6 py-2.5 font-semibold text-white shadow-md transition-all hover:-translate-y-0.5 hover:bg-cyan-700 hover:shadow-lg"
+                  >
                     {isCompletionStage ? "View Final Summary" : "Next Stage"}
                   </Button>
                 )}
@@ -404,31 +435,35 @@ export default function StagePageClient({
           </Card>
 
           <div className="space-y-6">
-            <Card className="rounded-3xl">
+            <Card className="rounded-3xl border-0 bg-white/95 shadow-2xl">
               <CardHeader>
-                <CardTitle>How this works</CardTitle>
+                <CardTitle className="text-slate-900">How this works</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-3 text-sm text-slate-600">
-                <p>
-                  Your answer is evaluated against hidden operational criteria.
-                </p>
-                <p>
-                  The simulation always moves forward, but the next stage can
-                  branch into a more controlled or more pressured consequence
-                  pathway depending on what your response covered.
-                </p>
-                <p>
-                  Feedback is shown after each answer so you can understand what
-                  was covered well and what important actions were missing.
-                </p>
+
+              <CardContent className="space-y-4 text-sm leading-6 text-slate-600">
+                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                  Your response is evaluated against hidden operational
+                  criteria.
+                </div>
+
+                <div className="rounded-2xl border border-cyan-100 bg-cyan-50 p-4">
+                  The simulation continues forward, but your response can guide
+                  it into a more controlled or more pressured pathway.
+                </div>
+
+                <div className="rounded-2xl border border-emerald-100 bg-emerald-50 p-4">
+                  Feedback is shown after submission so you can review strengths
+                  and gaps before moving forward.
+                </div>
               </CardContent>
             </Card>
 
             {sessionCode && (
-              <Card className="rounded-3xl">
+              <Card className="rounded-3xl border-0 bg-white/95 shadow-2xl">
                 <CardHeader>
-                  <CardTitle>Session Info</CardTitle>
+                  <CardTitle className="text-slate-900">Session Info</CardTitle>
                 </CardHeader>
+
                 <CardContent className="text-sm text-slate-600">
                   <p>
                     You are participating in shared session{" "}

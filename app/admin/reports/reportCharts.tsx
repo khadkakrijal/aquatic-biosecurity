@@ -187,7 +187,7 @@ export default function ReportsCharts({
           </CardContent>
         </Card>
       </div>
-      <Card className="rounded-3xl lg:col-span-2">
+      <Card className="rounded-3xl lg:col-span-2 mt-5">
         <CardHeader>
           <CardTitle>Completion by Participant</CardTitle>
         </CardHeader>

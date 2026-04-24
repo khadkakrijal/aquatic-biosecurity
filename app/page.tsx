@@ -33,7 +33,7 @@ export default async function HomePage() {
       }}
     >
       <div className="flex min-h-screen flex-col">
-        <header className="flex items-center justify-between px-4 py-4 md:px-10">
+        <header className="flex items-center justify-between px-4 py-4 md:px-14">
           <p className="text-xs uppercase tracking-[0.3em] text-cyan-300">
             Biosecurity Simulation Platform
           </p>
@@ -49,7 +49,7 @@ export default async function HomePage() {
           </div>
         </header>
 
-        <section className="flex flex-1 items-center justify-center px-4 py-8 md:px-10">
+        <section className="flex flex-1 items-center justify-center px-4 md:px-10">
           <div className="grid w-full max-w-6xl items-center gap-8 lg:grid-cols-2">
             <div className="py-5">
               <p className="mb-4 inline-flex rounded-full border border-cyan-300/40 bg-cyan-400/10 px-4 py-1.5 text-xs font-medium text-cyan-200 backdrop-blur-md">

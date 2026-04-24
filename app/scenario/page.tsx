@@ -32,7 +32,13 @@ export default async function ScenarioListPage() {
     .order("created_at", { ascending: false });
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-cyan-50 via-white to-blue-100">
+    <main
+      className="min-h-screen bg-gradient-to-br from-cyan-50 via-white to-blue-100"
+      style={{
+        backgroundImage:
+          "linear-gradient(135deg, rgba(6,12,28,0.9), rgba(8,48,73,0.5), rgba(17,24,39,0.9)), url('/biosecurity-bg.png')",
+      }}
+    >
       <div className="mx-auto max-w-6xl px-6 py-10">
         {/*  Header + Admin Button */}
         <div className="mb-10 text-center relative">
@@ -49,11 +55,11 @@ export default async function ScenarioListPage() {
               </Button>
             )}
           </div>
-          <h1 className="mt-4 text-4xl font-semibold text-slate-900">
+          <h1 className="mt-4 text-4xl font-semibold text-white">
             Choose a Scenario
           </h1>
 
-          <p className="mx-auto mt-3 max-w-2xl text-slate-600">
+          <p className="mx-auto mt-3 max-w-2xl text-white">
             Select a scenario to review its details and begin the simulation.
           </p>
         </div>
@@ -75,7 +81,7 @@ export default async function ScenarioListPage() {
             {scenarios.map((scenario) => (
               <Card
                 key={scenario.id}
-                className="rounded-3xl border bg-white/80 shadow-sm backdrop-blur"
+                className="rounded-3xl border border-1 border-white bg-cyan-100 shadow-sm backdrop-blur"
               >
                 <CardHeader>
                   <div className="flex items-start justify-between gap-3">
@@ -105,7 +111,10 @@ export default async function ScenarioListPage() {
                     {scenario.overview || "No overview available."}
                   </p>
 
-                  <Button asChild className="rounded-2xl">
+                  <Button
+                    asChild
+                    className="rounded-2xl bg-cyan-600 px-5 py-2.5 text-white shadow-md transition-all duration-300 hover:bg-cyan-700 hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0"
+                  >
                     <Link href={`/scenario/${scenario.slug}`}>
                       View Scenario
                     </Link>

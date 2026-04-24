@@ -200,7 +200,7 @@ export default async function AdminDashboardPage() {
           </h3>
         </div>
 
-        <div className="grid gap-6 md:grid-cols-2">
+        <div className="grid gap-6 md:grid-cols-2 cursor-pointer">
           {quickActions.map((item) => {
             const Icon = item.icon;
 
@@ -228,7 +228,7 @@ export default async function AdminDashboardPage() {
                   </p>
 
                   <Link href={item.href}>
-                    <Button className={`${item.button} text-white`}>
+                    <Button className={`${item.button} text-white cursor-pointer`}>
                       {item.cta}
                     </Button>
                   </Link>

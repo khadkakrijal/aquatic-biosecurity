@@ -51,6 +51,11 @@ interface SummaryPageClientProps {
   scenario: Scenario;
 }
 
+const BACKGROUND_STYLE = {
+  backgroundImage:
+    "linear-gradient(135deg, rgba(6,12,28,0.9), rgba(8,48,73,0.65), rgba(17,24,39,0.92)), url('/biosecurity-bg.png')",
+};
+
 const PIE_COLORS = ["#10b981", "#f59e0b", "#ef4444"];
 const THEME_BAR_COLOR = "#06b6d4";
 const COVERAGE_BAR_COLOR = "#2563eb";
@@ -73,13 +78,32 @@ function ChartCard({
   children: React.ReactNode;
 }) {
   return (
-    <Card className="rounded-3xl">
+    <Card className="rounded-3xl border-0 bg-white/95 shadow-2xl">
       <CardHeader>
-        <CardTitle>{title}</CardTitle>
+        <CardTitle className="text-slate-900">{title}</CardTitle>
       </CardHeader>
       <CardContent>
         <div className="flex justify-center overflow-x-auto">{children}</div>
         <p className="mt-3 text-sm leading-6 text-slate-600">{description}</p>
+      </CardContent>
+    </Card>
+  );
+}
+
+function SummaryCard({
+  title,
+  value,
+}: {
+  title: string;
+  value: string | number;
+}) {
+  return (
+    <Card className="rounded-3xl border-0 bg-white/95 shadow-2xl">
+      <CardContent className="p-5">
+        <p className="text-xs uppercase tracking-wide text-slate-500">
+          {title}
+        </p>
+        <p className="mt-2 text-3xl font-semibold text-slate-900">{value}</p>
       </CardContent>
     </Card>
   );
@@ -103,6 +127,7 @@ export default function SummaryPageClient({
       if (a.phaseNumber !== b.phaseNumber) {
         return a.phaseNumber - b.phaseNumber;
       }
+
       return (a.submittedAt || "").localeCompare(b.submittedAt || "");
     });
   }, [responses]);
@@ -126,6 +151,7 @@ export default function SummaryPageClient({
 
     if (severities.includes("severe")) return "severe";
     if (severities.includes("elevated")) return "elevated";
+
     return "manageable";
   }, [stageResponses]);
 
@@ -134,9 +160,11 @@ export default function SummaryPageClient({
 
     stageResponses.forEach((response) => {
       const gaps = response.evaluation?.missedCriteriaTexts || [];
+
       gaps.forEach((gap) => {
         const key = gap.trim();
         if (!key) return;
+
         gapMap.set(key, (gapMap.get(key) || 0) + 1);
       });
     });
@@ -152,8 +180,10 @@ export default function SummaryPageClient({
 
     stageResponses.forEach((response) => {
       const themes = response.evaluation?.missedThemes || [];
+
       themes.forEach((theme) => {
         if (!theme) return;
+
         themeMap.set(theme, (themeMap.get(theme) || 0) + 1);
       });
     });
@@ -173,7 +203,7 @@ export default function SummaryPageClient({
         stageId: response.stageId,
         phaseNumber: response.phaseNumber,
         title: stage?.title || response.stageId,
-        branchFamily: stage?.branchFamily || "unknown",
+        branchFamily: stage?.branchFamily || "main",
         decision: response.evaluation?.decision || "mixed",
         branchReason: response.evaluation?.branchReason || "",
       };
@@ -189,6 +219,7 @@ export default function SummaryPageClient({
 
     stageResponses.forEach((response) => {
       const decision = response.evaluation?.decision;
+
       if (decision === "strong") counts.strong += 1;
       else if (decision === "mixed") counts.mixed += 1;
       else if (decision === "limited") counts.limited += 1;
@@ -227,17 +258,19 @@ export default function SummaryPageClient({
   const localSummary = useMemo(() => {
     const topGaps = repeatedGaps
       .slice(0, 3)
-      .map((g) => g.text)
+      .map((gap) => gap.text)
       .join(", ");
+
     const topThemes = repeatedThemes
       .slice(0, 3)
-      .map((t) => t.theme)
+      .map((theme) => theme.theme)
       .join(", ");
 
     const decisionCounts = {
-      strong: decisionBreakdown.find((d) => d.name === "Strong")?.value || 0,
-      mixed: decisionBreakdown.find((d) => d.name === "Mixed")?.value || 0,
-      limited: decisionBreakdown.find((d) => d.name === "Limited")?.value || 0,
+      strong: decisionBreakdown.find((item) => item.name === "Strong")?.value || 0,
+      mixed: decisionBreakdown.find((item) => item.name === "Mixed")?.value || 0,
+      limited:
+        decisionBreakdown.find((item) => item.name === "Limited")?.value || 0,
     };
 
     let performanceLine =
@@ -279,8 +312,7 @@ export default function SummaryPageClient({
       try {
         const session = getStoredSession();
 
-        if (!session.attemptId) return;
-        if (session.completedAt) return;
+        if (!session.attemptId || session.completedAt) return;
 
         await completeSimulationAttemptAction({
           attemptId: session.attemptId,
@@ -313,28 +345,24 @@ export default function SummaryPageClient({
 
   const handleRestart = () => {
     resetStoredSession();
-
-    if (!firstStage) return;
-
     router.push("/scenario");
   };
 
   const handleBackToStart = () => {
     resetStoredSession();
-    if (!firstStage) return;
     router.push("/scenario");
   };
 
   const getSeverityBadgeClass = (severity?: ScenarioSeverity) => {
     switch (severity) {
       case "manageable":
-        return "bg-cyan-600 text-white";
+        return "border-0 bg-emerald-500 text-white";
       case "elevated":
-        return "bg-orange-500 text-white";
+        return "border-0 bg-orange-500 text-white";
       case "severe":
-        return "bg-rose-600 text-white";
+        return "border-0 bg-rose-600 text-white";
       default:
-        return "bg-slate-200 text-slate-700";
+        return "border-0 bg-slate-200 text-slate-700";
     }
   };
 
@@ -366,9 +394,12 @@ export default function SummaryPageClient({
 
   if (loading) {
     return (
-      <main className="min-h-screen bg-gradient-to-br from-cyan-50 via-white to-blue-100 p-8">
-        <div className="mx-auto max-w-5xl">
-          <p className="text-sm text-slate-600">Loading summary...</p>
+      <main
+        className="min-h-screen bg-cover bg-center bg-no-repeat p-8"
+        style={BACKGROUND_STYLE}
+      >
+        <div className="mx-auto max-w-5xl rounded-3xl border border-white/10 bg-white/10 p-6 text-white backdrop-blur-md">
+          <p className="text-sm text-slate-200">Loading summary...</p>
         </div>
       </main>
     );
@@ -376,17 +407,22 @@ export default function SummaryPageClient({
 
   if (!orderedResponses.length) {
     return (
-      <main className="min-h-screen bg-gradient-to-br from-cyan-50 via-white to-blue-100 p-8">
+      <main
+        className="min-h-screen bg-cover bg-center bg-no-repeat p-8"
+        style={BACKGROUND_STYLE}
+      >
         <div className="mx-auto max-w-4xl">
-          <Card className="rounded-3xl">
+          <Card className="rounded-3xl border-0 bg-white/95 shadow-2xl">
             <CardHeader>
               <CardTitle>No simulation data found</CardTitle>
             </CardHeader>
+
             <CardContent className="space-y-4">
               <p className="text-sm text-slate-600">
                 No saved simulation session was found. Please start the
                 simulation first.
               </p>
+
               {firstStage && (
                 <Button
                   onClick={() =>
@@ -394,6 +430,7 @@ export default function SummaryPageClient({
                       `/simulation/demo/${scenario.slug}/stage/${firstStage.id}`,
                     )
                   }
+                  className="rounded-2xl bg-cyan-600 px-5 py-2.5 font-semibold text-white shadow-md transition-all hover:-translate-y-0.5 hover:bg-cyan-700 hover:shadow-lg"
                 >
                   Go to Scenario
                 </Button>
@@ -406,79 +443,57 @@ export default function SummaryPageClient({
   }
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-cyan-50 via-white to-blue-100">
+    <main
+      className="min-h-screen bg-cover bg-center bg-no-repeat"
+      style={BACKGROUND_STYLE}
+    >
       <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
-        <div className="mb-8">
+        <section className="mb-8 rounded-3xl border border-white/10 bg-white/10 p-6 text-white shadow-2xl backdrop-blur-md">
           <div className="mb-3 flex flex-wrap gap-2">
-            <Badge className="bg-cyan-600 text-white">Simulation Summary</Badge>
-            <Badge variant="outline">{scenario.title}</Badge>
+            <Badge className="border-0 bg-cyan-500 text-white">
+              Simulation Summary
+            </Badge>
+
+            <Badge className="border border-white/20 bg-white/10 text-white">
+              {scenario.title}
+            </Badge>
+
             <Badge className={getSeverityBadgeClass(overallSeverity)}>
-              Overall incident severity: {overallSeverity}
+              Overall severity: {overallSeverity}
             </Badge>
           </div>
 
-          <h1 className="text-3xl font-semibold text-slate-900">
+          <h1 className="text-3xl font-bold tracking-tight md:text-4xl">
             Final Exercise Summary
           </h1>
-          <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
+
+          <p className="mt-3 max-w-3xl text-sm leading-7 text-slate-200">
             This summary highlights response quality, repeated gaps, pathway
             progression, and the main learning points across the exercise.
           </p>
-        </div>
+        </section>
 
-        <div className="mb-6 grid gap-4 md:grid-cols-4">
-          <Card className="rounded-3xl">
-            <CardContent className="p-5">
-              <p className="text-xs uppercase tracking-wide text-slate-500">
-                Completed phases
-              </p>
-              <p className="mt-2 text-3xl font-semibold text-slate-900">
-                {stageResponses.length}
-              </p>
-            </CardContent>
-          </Card>
+        <section className="mb-6 grid gap-4 md:grid-cols-4">
+          <SummaryCard title="Completed phases" value={stageResponses.length} />
+          <SummaryCard title="Matched criteria" value={totalMatchedCriteria} />
+          <SummaryCard
+            title="Missed required criteria"
+            value={totalMissedRequired}
+          />
+          <SummaryCard
+            title="Final reflection"
+            value={reflectionResponse ? "Yes" : "No"}
+          />
+        </section>
 
-          <Card className="rounded-3xl">
-            <CardContent className="p-5">
-              <p className="text-xs uppercase tracking-wide text-slate-500">
-                Matched criteria
-              </p>
-              <p className="mt-2 text-3xl font-semibold text-slate-900">
-                {totalMatchedCriteria}
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card className="rounded-3xl">
-            <CardContent className="p-5">
-              <p className="text-xs uppercase tracking-wide text-slate-500">
-                Missed required criteria
-              </p>
-              <p className="mt-2 text-3xl font-semibold text-slate-900">
-                {totalMissedRequired}
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card className="rounded-3xl">
-            <CardContent className="p-5">
-              <p className="text-xs uppercase tracking-wide text-slate-500">
-                Final reflection
-              </p>
-              <p className="mt-2 text-3xl font-semibold text-slate-900">
-                {reflectionResponse ? "Yes" : "No"}
-              </p>
-            </CardContent>
-          </Card>
-        </div>
-
-        <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
-          <Card className="rounded-3xl">
+        <section className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
+          <Card className="rounded-3xl border-0 bg-white/95 shadow-2xl">
             <CardHeader>
               <CardTitle>Preparedness Summary</CardTitle>
             </CardHeader>
+
             <CardContent>
-              <div className="rounded-2xl border bg-slate-50/70 p-5">
+              <div className="rounded-2xl border border-cyan-100 bg-cyan-50/70 p-5">
                 <p className="text-sm leading-7 text-slate-700">
                   {localSummary}
                 </p>
@@ -486,14 +501,16 @@ export default function SummaryPageClient({
             </CardContent>
           </Card>
 
-          <Card className="rounded-3xl">
+          <Card className="rounded-3xl border-0 bg-white/95 shadow-2xl">
             <CardHeader>
               <CardTitle>Exercise Overview</CardTitle>
             </CardHeader>
+
             <CardContent className="space-y-5 text-sm text-slate-600">
               <p>
                 Completed phases: <strong>{stageResponses.length}</strong>
               </p>
+
               <p>
                 Final reflection included:{" "}
                 <strong>{reflectionResponse ? "Yes" : "No"}</strong>
@@ -504,6 +521,7 @@ export default function SummaryPageClient({
                   <h3 className="mb-2 font-semibold text-slate-900">
                     Path through the exercise
                   </h3>
+
                   <ul className="space-y-2">
                     {visitedPath.map((item, index) => (
                       <li
@@ -521,16 +539,26 @@ export default function SummaryPageClient({
               )}
 
               <div className="flex flex-wrap gap-3 pt-3">
-                <Button variant="outline" onClick={handleBackToStart}>
+                <Button
+                  variant="outline"
+                  onClick={handleBackToStart}
+                  className="rounded-2xl border-cyan-200 bg-white px-5 py-2.5 text-cyan-700 transition hover:border-cyan-400 hover:bg-cyan-50"
+                >
                   Back to Start
                 </Button>
-                <Button onClick={handleRestart}>Restart Simulation</Button>
+
+                <Button
+                  onClick={handleRestart}
+                  className="rounded-2xl bg-cyan-600 px-5 py-2.5 font-semibold text-white shadow-md transition-all hover:-translate-y-0.5 hover:bg-cyan-700 hover:shadow-lg"
+                >
+                  Restart Simulation
+                </Button>
               </div>
             </CardContent>
           </Card>
-        </div>
+        </section>
 
-        <div className="mt-6 grid gap-6 lg:grid-cols-2">
+        <section className="mt-6 grid gap-6 lg:grid-cols-2">
           <ChartCard
             title="Response Quality Breakdown"
             description="This chart shows how often your responses were rated strong, mixed, or limited."
@@ -589,9 +617,9 @@ export default function SummaryPageClient({
               <ChartEmptyState message="No repeated missed themes were recorded." />
             )}
           </ChartCard>
-        </div>
+        </section>
 
-        <div className="mt-6">
+        <section className="mt-6">
           <ChartCard
             title="Criteria Coverage by Phase"
             description="This chart compares matched criteria and missed required criteria across the completed phases."
@@ -625,18 +653,19 @@ export default function SummaryPageClient({
               <ChartEmptyState message="No criteria coverage data available yet." />
             )}
           </ChartCard>
-        </div>
+        </section>
 
         {repeatedGaps.length > 0 && (
-          <Card className="mt-6 rounded-3xl">
+          <Card className="mt-6 rounded-3xl border-0 bg-white/95 shadow-2xl">
             <CardHeader>
               <CardTitle>Most Repeated Gaps</CardTitle>
             </CardHeader>
+
             <CardContent className="space-y-3">
               {repeatedGaps.map((gap, index) => (
                 <div
                   key={`${gap.text}-${index}`}
-                  className="rounded-2xl border bg-slate-50/70 p-4"
+                  className="rounded-2xl border border-amber-100 bg-amber-50/80 p-4"
                 >
                   <p className="text-sm leading-7 text-slate-700">
                     {gap.text}
@@ -649,12 +678,13 @@ export default function SummaryPageClient({
         )}
 
         {reflectionResponse && (
-          <Card className="mt-6 rounded-3xl">
+          <Card className="mt-6 rounded-3xl border-0 bg-white/95 shadow-2xl">
             <CardHeader>
               <CardTitle>Final Reflection</CardTitle>
             </CardHeader>
+
             <CardContent>
-              <div className="rounded-2xl border bg-slate-50/70 p-5">
+              <div className="rounded-2xl border border-cyan-100 bg-cyan-50/70 p-5">
                 <p className="text-sm leading-7 text-slate-700">
                   {reflectionResponse.combinedAnswer}
                 </p>
@@ -663,7 +693,7 @@ export default function SummaryPageClient({
           </Card>
         )}
 
-        <div className="mt-6 space-y-6">
+        <section className="mt-6 space-y-6">
           {stageResponses.map((response) => {
             const stage = scenario.stages.find(
               (item) => item.id === response.stageId,
@@ -675,7 +705,10 @@ export default function SummaryPageClient({
               Boolean(response.evaluation?.branchReason);
 
             return (
-              <Card key={response.stageId} className="rounded-3xl">
+              <Card
+                key={response.stageId}
+                className="rounded-3xl border-0 bg-white/95 shadow-2xl"
+              >
                 <CardHeader>
                   <div className="flex flex-wrap items-center gap-2">
                     <CardTitle className="text-xl">
@@ -720,7 +753,7 @@ export default function SummaryPageClient({
                       stageQuestions.map((question, index) => (
                         <div
                           key={question.id}
-                          className="rounded-2xl border bg-slate-50/70 p-4"
+                          className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4"
                         >
                           <p className="mb-2 text-sm font-medium text-slate-900">
                             Question {index + 1}: {question.text}
@@ -732,7 +765,7 @@ export default function SummaryPageClient({
                         </div>
                       ))
                     ) : (
-                      <div className="rounded-2xl border bg-slate-50/70 p-4">
+                      <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
                         <p className="text-sm leading-7 text-slate-600">
                           {response.combinedAnswer}
                         </p>
@@ -756,7 +789,7 @@ export default function SummaryPageClient({
                   )}
 
                   {shouldShowBranchReason && (
-                    <div className="rounded-2xl border bg-slate-50/70 p-4">
+                    <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
                       <h4 className="mb-2 font-semibold text-slate-900">
                         Why this branch happened
                       </h4>
@@ -771,6 +804,7 @@ export default function SummaryPageClient({
                       <h4 className="mb-2 font-semibold text-emerald-900">
                         What you covered well
                       </h4>
+
                       <div className="flex flex-wrap gap-2">
                         {response.evaluation.strengths.map((item, index) => (
                           <Badge
@@ -789,6 +823,7 @@ export default function SummaryPageClient({
                       <h4 className="mb-2 font-semibold text-amber-900">
                         Main gaps at this stage
                       </h4>
+
                       <div className="flex flex-wrap gap-2">
                         {response.evaluation.missedCriteriaTexts.map(
                           (item, index) => (
@@ -807,7 +842,7 @@ export default function SummaryPageClient({
               </Card>
             );
           })}
-        </div>
+        </section>
       </div>
     </main>
   );
