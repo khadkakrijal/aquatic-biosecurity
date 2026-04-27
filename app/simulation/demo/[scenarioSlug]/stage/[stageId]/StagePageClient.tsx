@@ -312,8 +312,10 @@ export default function StagePageClient({
       <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
         <div className="mb-6 rounded-3xl border border-white/10 bg-white/10 p-6 text-white shadow-2xl backdrop-blur-md">
           <div className="mb-3 flex flex-wrap gap-2">
-            <Badge className="border-0 bg-cyan-500 text-white">
-              {scenario.title}
+            <Badge className="border-0 bg-cyan-500 text-white max-w-full overflow-hidden whitespace-nowrap">
+              <span className="inline-block animate-[marquee_20s_linear_infinite]">
+                {scenario.title}
+              </span>
             </Badge>
 
             <Badge className="border border-white/20 bg-white/10 text-white">

@@ -83,7 +83,13 @@ export default function RegisterContent() {
   };
 
   return (
-    <main className="min-h-screen flex items-center justify-center p-6 bg-slate-50">
+    <main
+      className="min-h-screen flex items-center justify-center p-6 bg-slate-50"
+      style={{
+        backgroundImage:
+          "linear-gradient(135deg, rgba(6,12,28,0.9), rgba(8,48,73,0.65), rgba(17,24,39,0.92)), url('/biosecurity-bg.png')",
+      }}
+    >
       <div className="w-full max-w-md rounded-2xl border bg-white p-6 shadow-sm">
         <h1 className="mb-2 text-2xl font-semibold text-slate-900">
           Create account

@@ -5,6 +5,7 @@ import { useState } from "react";
 import Swal from "sweetalert2";
 import { createClient } from "@/utils/supabase/client";
 import { useRouter, useSearchParams } from "next/navigation";
+import { ShieldCheck } from "lucide-react";
 
 export default function LoginContent() {
   const router = useRouter();
@@ -82,16 +83,31 @@ export default function LoginContent() {
   };
 
   return (
-    <main className="min-h-screen flex items-center justify-center p-6 bg-slate-50">
-      <div className="w-full max-w-md rounded-2xl border bg-white p-6 shadow-sm">
-        <h1 className="mb-2 text-2xl font-semibold text-slate-900">Login</h1>
-        <p className="mb-6 text-sm text-slate-600">
-          Sign in to continue to the platform.
-        </p>
+    <main
+      className="flex min-h-screen items-center justify-center bg-cover bg-center bg-no-repeat p-6"
+      style={{
+        backgroundImage:
+          "linear-gradient(135deg, rgba(6,12,28,0.9), rgba(8,48,73,0.65), rgba(17,24,39,0.92)), url('/biosecurity-bg.png')",
+      }}
+    >
+      <div className="w-full max-w-md rounded-3xl border border-white/10 bg-white/95 p-7 shadow-2xl backdrop-blur-md">
+        <div className="mb-6 text-center">
+          <div className="mx-auto mb-4 flex h-14 w-14 flex-col gap-1 items-center justify-center rounded-2xl bg-cyan-600 text-white shadow-lg">
+            <ShieldCheck className="h-5 w-5" />
+            <span className="text-[10px] font-bold tracking-wide leading-none">
+              BIO
+            </span>
+          </div>
+
+          <h1 className="text-3xl font-bold text-slate-900">Welcome Back</h1>
+          <p className="mt-2 text-sm leading-6 text-slate-600">
+            Sign in to continue to the biosecurity simulation platform.
+          </p>
+        </div>
 
         <form onSubmit={handleEmailLogin} className="space-y-4">
           <div>
-            <label className="mb-2 block text-sm font-medium text-slate-900">
+            <label className="mb-2 block text-sm font-semibold text-slate-900">
               Email
             </label>
             <input
@@ -99,12 +115,13 @@ export default function LoginContent() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
-              className="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-cyan-500"
+              className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-cyan-500 focus:ring-2 focus:ring-cyan-100"
+              placeholder="Enter your email"
             />
           </div>
 
           <div>
-            <label className="mb-2 block text-sm font-medium text-slate-900">
+            <label className="mb-2 block text-sm font-semibold text-slate-900">
               Password
             </label>
             <input
@@ -112,40 +129,45 @@ export default function LoginContent() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
-              className="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-cyan-500"
+              className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-cyan-500 focus:ring-2 focus:ring-cyan-100"
+              placeholder="Enter your password"
             />
           </div>
 
           <button
             type="submit"
             disabled={loadingEmail}
-            className="w-full rounded-xl bg-cyan-600 px-4 py-3 text-white transition hover:bg-cyan-700 disabled:opacity-60"
+            className="w-full rounded-2xl bg-cyan-600 px-4 py-3 font-semibold text-white shadow-md transition-all hover:-translate-y-0.5 hover:bg-cyan-700 hover:shadow-lg disabled:translate-y-0 disabled:opacity-60"
           >
             {loadingEmail ? "Signing in..." : "Sign in"}
           </button>
         </form>
 
-        <div className="my-5 flex items-center gap-3">
+        <div className="my-6 flex items-center gap-3">
           <div className="h-px flex-1 bg-slate-200" />
-          <span className="text-xs text-slate-400">OR</span>
+          <span className="text-xs font-medium text-slate-400">OR</span>
           <div className="h-px flex-1 bg-slate-200" />
         </div>
 
         <button
           onClick={handleGoogleLogin}
           disabled={loadingGoogle}
-          className="w-full rounded-xl bg-black px-4 py-3 text-white transition hover:bg-gray-800 disabled:opacity-60"
+          className="w-full rounded-2xl border border-slate-200 bg-slate-900 px-4 py-3 font-semibold text-white shadow-md transition-all hover:-translate-y-0.5 hover:bg-black hover:shadow-lg disabled:translate-y-0 disabled:opacity-60"
         >
           {loadingGoogle ? "Redirecting..." : "Continue with Google"}
         </button>
 
         <div className="mt-6 flex items-center justify-between text-sm">
-          <Link href="/register" className="text-cyan-700 hover:underline">
+          <Link
+            href="/register"
+            className="font-medium text-cyan-700 transition hover:text-cyan-800 hover:underline"
+          >
             Create account
           </Link>
+
           <Link
             href="/forgot-password"
-            className="text-cyan-700 hover:underline"
+            className="font-medium text-cyan-700 transition hover:text-cyan-800 hover:underline"
           >
             Forgot password?
           </Link>

@@ -89,7 +89,7 @@ export default async function HomePage() {
               </div>
             </div>
 
-            <div className="rounded-[30px] border border-white/15 bg-slate-950/40 p-6 shadow-2xl backdrop-blur-xl">
+            <div className="rounded-[30px] border border-white/15 bg-slate-950/40 p-6 shadow-2xl backdrop-blur-xl mb-10">
               <div className="grid gap-5">
                 <div>
                   <p className="text-xs uppercase tracking-[0.2em] text-cyan-300">
