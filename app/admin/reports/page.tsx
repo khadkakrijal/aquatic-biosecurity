@@ -5,17 +5,80 @@ import { Badge } from "@/components/ui/badge";
 import ReportsCharts from "./reportCharts";
 import {
   getAttemptsReport,
+  getAttemptDetail,
   getDecisionBreakdownAcrossStages,
   getMostMissedThemes,
   getReportStats,
 } from "@/app/lib/simulation-reports";
 import DeleteReportButton from "./DeleteReportButton";
+import DownloadAttemptReportButton from "./[attemptId]/DownloadAttemptReportButton";
+
+function formatLabel(value?: string | null) {
+  if (!value) return "Not Recorded";
+
+  return value
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+function formatDuration(seconds?: number | null, status?: string | null) {
+  if (!seconds || seconds <= 0) {
+    return status === "completed" ? "Not Recorded" : "In Progress";
+  }
+
+  const minutes = Math.floor(seconds / 60);
+  const remainingSeconds = seconds % 60;
+
+  if (minutes <= 0) return `${remainingSeconds} seconds`;
+
+  if (minutes < 60) {
+    return `${minutes} minute${minutes === 1 ? "" : "s"}${
+      remainingSeconds ? ` ${remainingSeconds} seconds` : ""
+    }`;
+  }
+
+  const hours = Math.floor(minutes / 60);
+  const remainingMinutes = minutes % 60;
+
+  return `${hours} hour${hours === 1 ? "" : "s"}${
+    remainingMinutes ? ` ${remainingMinutes} minutes` : ""
+  }`;
+}
 
 export default async function AdminReportsPage() {
   const stats = await getReportStats();
   const attempts = await getAttemptsReport();
   const decisionData = await getDecisionBreakdownAcrossStages();
   const missedThemesData = await getMostMissedThemes();
+
+  const attemptDetails: [string, { attempt: any; stages: any[] }][] =
+    await Promise.all(
+      (attempts || []).map(async (attempt: any) => {
+        try {
+          const detail = await getAttemptDetail(attempt.id);
+
+          return [
+            attempt.id,
+            {
+              attempt: detail.attempt,
+              stages: detail.stages || [],
+            },
+          ];
+        } catch {
+          return [
+            attempt.id,
+            {
+              attempt,
+              stages: [],
+            },
+          ];
+        }
+      }),
+    );
+
+  const attemptDetailMap = new Map<string, { attempt: any; stages: any[] }>(
+    attemptDetails,
+  );
 
   const statusData = [
     { name: "Completed", value: stats.completedAttempts },
@@ -105,49 +168,69 @@ export default async function AdminReportsPage() {
         <CardHeader>
           <CardTitle>All Attempts</CardTitle>
         </CardHeader>
+
         <CardContent>
           {!attempts?.length ? (
             <p className="text-sm text-slate-600">No attempts found yet.</p>
           ) : (
             <div className="space-y-4">
-              {attempts.map((attempt: any) => (
-                <div
-                  key={attempt.id}
-                  className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border p-4"
-                >
-                  <div>
-                    <p className="font-medium text-slate-900">
-                      {attempt.profiles?.full_name || "Unknown User"}
-                    </p>
-                    <p className="text-sm text-slate-500">
-                      {attempt.profiles?.email || "No email"}
-                    </p>
-                    <p className="mt-1 text-sm text-slate-600">
-                      Scenario:{" "}
-                      {attempt.scenarios?.title || attempt.scenario_slug}
-                    </p>
-                    <p className="text-sm text-slate-600">
-                      Completion: {attempt.completion_percentage || 0}% |
-                      Status: {attempt.status} | Severity:{" "}
-                      {attempt.overall_severity || "N/A"}
-                    </p>
-                    <p className="text-sm text-slate-600">
-                      Time Spent: {attempt.total_time_seconds || 0} seconds
-                    </p>
-                  </div>
+              {attempts.map((attempt: any) => {
+                const detail = attemptDetailMap.get(attempt.id);
+                const downloadAttempt = detail?.attempt || attempt;
+                const stages = detail?.stages || [];
 
-                  <div className="flex flex-wrap gap-2">
-                    <Link
-                      href={`/admin/reports/${attempt.id}`}
-                      className="rounded-xl border px-4 py-2 text-sm"
-                    >
-                      View Report
-                    </Link>
+                return (
+                  <div
+                    key={attempt.id}
+                    className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border p-4"
+                  >
+                    <div>
+                      <p className="font-medium text-slate-900">
+                        {attempt.profiles?.full_name || "Unknown User"}
+                      </p>
 
-                    <DeleteReportButton attemptId={attempt.id} />
+                      <p className="text-sm text-slate-500">
+                        {attempt.profiles?.email || "No email"}
+                      </p>
+
+                      <p className="mt-1 text-sm text-slate-600">
+                        Scenario:{" "}
+                        {attempt.scenarios?.title || attempt.scenario_slug}
+                      </p>
+
+                      <p className="text-sm text-slate-600">
+                        Completion: {attempt.completion_percentage || 0}% |
+                        Status: {formatLabel(attempt.status)} | Severity:{" "}
+                        {formatLabel(attempt.overall_severity)}
+                      </p>
+
+                      <p className="text-sm text-slate-600">
+                        Time Spent:{" "}
+                        {formatDuration(
+                          attempt.total_time_seconds,
+                          attempt.status,
+                        )}
+                      </p>
+                    </div>
+
+                    <div className="flex flex-wrap gap-2">
+                      <Link
+                        href={`/admin/reports/${attempt.id}`}
+                        className="rounded-xl border px-4 py-2 text-sm transition hover:bg-slate-50"
+                      >
+                        View Report
+                      </Link>
+
+                      <DownloadAttemptReportButton
+                        attempt={downloadAttempt}
+                        stages={stages}
+                      />
+
+                      <DeleteReportButton attemptId={attempt.id} />
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </CardContent>

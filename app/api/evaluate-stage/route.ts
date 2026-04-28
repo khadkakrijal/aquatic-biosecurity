@@ -87,16 +87,12 @@ function keywordPhraseMatch(answer: string, keyword: string) {
 
   if (!safeKeyword) return false;
 
-  if (safeAnswer.includes(safeKeyword)) {
-    return true;
-  }
+  if (safeAnswer.includes(safeKeyword)) return true;
 
   const keywordTokens = tokenize(safeKeyword);
   const answerTokens = tokenize(safeAnswer);
 
-  if (!keywordTokens.length || !answerTokens.length) {
-    return false;
-  }
+  if (!keywordTokens.length || !answerTokens.length) return false;
 
   const answerTokenSet = new Set(answerTokens);
 
@@ -108,9 +104,7 @@ function keywordPhraseMatch(answer: string, keyword: string) {
       answerTokenSet.has(candidate),
     );
 
-    if (hasMatch) {
-      matchedCount += 1;
-    }
+    if (hasMatch) matchedCount += 1;
   }
 
   const requiredTokenMatches =
@@ -335,13 +329,63 @@ function isNonSubstantiveAnswer(answer: string) {
     "none",
   ];
 
-  if (nonSubstantivePhrases.includes(cleaned)) {
-    return true;
-  }
+  if (nonSubstantivePhrases.includes(cleaned)) return true;
 
   const tokens = tokenize(cleaned);
 
   return tokens.length <= 2;
+}
+
+const RANDOM_FEEDBACK_BANK: Record<EvaluationDecision, string[]> = {
+  strong: [
+    "This is a strong response that shows a clear understanding of the priorities for this phase. The actions identified are practical, relevant, and support a more coordinated pathway as the situation continues to develop.",
+
+    "Your answer demonstrates good judgement and a clear awareness of what needs to happen at this stage. The response focuses on appropriate actions that would help reduce uncertainty and strengthen overall control of the situation.",
+
+    "This response shows well-structured thinking and a solid understanding of the key issues involved in this phase. The actions identified would help decision-makers respond in a timely and organised manner.",
+
+    "You have provided a confident and well-considered response. The priorities identified are relevant to the situation and would contribute positively to managing operational pressure moving forward.",
+
+    "This is an effective response that recognises the most important actions for this stage. It reflects a practical approach and would help support a stable and coordinated response pathway.",
+
+    "Your response demonstrates strong situational awareness and clear decision-making. The actions outlined would assist with maintaining control, improving communication, and progressing the response effectively.",
+  ],
+
+  mixed: [
+    "This response identifies some useful actions and shows partial understanding of the situation. However, greater detail and clearer prioritisation would strengthen the response and improve confidence in the next steps.",
+
+    "There are several relevant points in this answer, but some important actions are either unclear or only partly addressed. A more structured response would help create a stronger operational pathway.",
+
+    "Your answer shows a reasonable understanding of the phase and includes some practical ideas. To improve further, the response should explain priorities more clearly and provide stronger detail around the next actions required.",
+
+    "This is a fair starting response with some helpful considerations. However, additional clarity around planning, coordination, or control measures would make the response more effective overall.",
+
+    "The response demonstrates some awareness of the situation, but it would benefit from more complete coverage of the key priorities for this phase. Clearer actions would help reduce uncertainty moving forward.",
+
+    "You have included some relevant actions, which is a positive start. To strengthen the answer, more detail is needed around how the response would be managed, communicated, and progressed in practice.",
+  ],
+
+  limited: [
+    "This response provides only a limited level of detail for this phase. Important priorities are not clearly identified, which would make it difficult for a team to respond confidently and effectively.",
+
+    "The answer is quite general and does not yet explain the key actions required at this stage. A stronger response would clearly outline practical steps, responsibilities, and immediate priorities.",
+
+    "This response would benefit from significantly more detail and direction. At this phase, clearer decision-making and stronger operational actions are needed to manage the situation successfully.",
+
+    "The current answer leaves a number of important gaps in the response approach. More specific planning, communication, and control measures would be required to reduce pressure and uncertainty.",
+
+    "This is a basic starting response, but it does not yet address enough of the critical priorities expected in this phase. Clearer and more practical next steps would strengthen the overall response.",
+
+    "The response is currently too limited to provide strong confidence in how the situation would be managed. More detailed actions and clearer priorities are needed to support an effective pathway forward.",
+  ],
+};
+
+function getRandomFeedback(decision: EvaluationDecision) {
+  const options = RANDOM_FEEDBACK_BANK[decision];
+
+  if (!options?.length) return undefined;
+
+  return options[Math.floor(Math.random() * options.length)];
 }
 
 function buildFeedback(
@@ -353,6 +397,12 @@ function buildFeedback(
 ) {
   if (isNonSubstantiveAnswer(userAnswer)) {
     return "It looks like no clear response was provided for this stage. In a real response setting, this would usually create uncertainty because the team would not yet have enough information to understand the intended actions. The scenario will continue into a more pressured pathway so you can still explore what may happen when early priorities are not clearly identified.";
+  }
+
+  const randomFeedback = getRandomFeedback(decision);
+
+  if (randomFeedback) {
+    return randomFeedback;
   }
 
   const matched = stage.criteria.filter((criterion) =>

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import Swal from "sweetalert2";
 import {
   getStoredSession,
   resetStoredSession,
@@ -24,6 +25,8 @@ import {
   Legend,
 } from "recharts";
 import { completeSimulationAttemptAction } from "@/app/actions/simulation-attempts";
+import { Download } from "lucide-react";
+import jsPDF from "jspdf";
 
 interface StageResponse {
   stageId: string;
@@ -78,7 +81,7 @@ function ChartCard({
   children: React.ReactNode;
 }) {
   return (
-    <Card className="rounded-3xl border-0 bg-white/95 shadow-2xl">
+    <Card className="report-card rounded-3xl border-0 bg-white/95 shadow-2xl">
       <CardHeader>
         <CardTitle className="text-slate-900">{title}</CardTitle>
       </CardHeader>
@@ -98,7 +101,7 @@ function SummaryCard({
   value: string | number;
 }) {
   return (
-    <Card className="rounded-3xl border-0 bg-white/95 shadow-2xl">
+    <Card className="report-card rounded-3xl border-0 bg-white/95 shadow-2xl">
       <CardContent className="p-5">
         <p className="text-xs uppercase tracking-wide text-slate-500">
           {title}
@@ -256,47 +259,51 @@ export default function SummaryPageClient({
   }, [stageResponses]);
 
   const localSummary = useMemo(() => {
-    const topGaps = repeatedGaps
-      .slice(0, 3)
-      .map((gap) => gap.text)
-      .join(", ");
-
-    const topThemes = repeatedThemes
-      .slice(0, 3)
-      .map((theme) => theme.theme)
-      .join(", ");
+    const topGaps = repeatedGaps.slice(0, 3).map((gap) => gap.text);
+    const topThemes = repeatedThemes.slice(0, 3).map((theme) => theme.theme);
 
     const decisionCounts = {
-      strong: decisionBreakdown.find((item) => item.name === "Strong")?.value || 0,
-      mixed: decisionBreakdown.find((item) => item.name === "Mixed")?.value || 0,
+      strong:
+        decisionBreakdown.find((item) => item.name === "Strong")?.value || 0,
+      mixed:
+        decisionBreakdown.find((item) => item.name === "Mixed")?.value || 0,
       limited:
         decisionBreakdown.find((item) => item.name === "Limited")?.value || 0,
     };
 
-    let performanceLine =
-      "Overall, your responses showed mixed performance across the exercise.";
+    let overallPerformance =
+      "Overall, the exercise shows a mixed level of preparedness. Some responses included relevant actions, but there were also areas where the response needed clearer planning, stronger coordination, and more complete operational detail.";
 
     if (
       decisionCounts.strong > decisionCounts.mixed &&
       decisionCounts.strong > decisionCounts.limited
     ) {
-      performanceLine =
-        "Overall, your responses showed strong performance across much of the exercise.";
+      overallPerformance =
+        "Overall, the exercise shows a strong level of preparedness. Most responses demonstrated clear thinking, relevant actions, and a practical understanding of how to manage the situation as it developed.";
     } else if (
       decisionCounts.limited >= decisionCounts.strong &&
       decisionCounts.limited >= decisionCounts.mixed
     ) {
-      performanceLine =
-        "Overall, your responses showed several important weaknesses across the exercise.";
+      overallPerformance =
+        "Overall, the exercise shows that preparedness needs further development. Several responses were too general or incomplete, which could create uncertainty during a real response situation.";
     }
 
-    return `${performanceLine} You completed ${stageResponses.length} phase${
+    const criteriaSummary = `Across ${stageResponses.length} completed phase${
       stageResponses.length === 1 ? "" : "s"
-    } and the overall incident severity reached ${overallSeverity}. Across the simulation, you matched ${totalMatchedCriteria} criteria and missed ${totalMissedRequired} required criteria. The most repeated gaps were ${
-      topGaps || "not clearly repeated"
-    }, and the most repeated themes were ${
-      topThemes || "not clearly repeated"
-    }. The clearest improvement area is building more consistent coverage of the key operational actions expected at each stage.`;
+    }, the response matched ${totalMatchedCriteria} expected criteria and missed ${totalMissedRequired} required criteria. The overall incident severity reached "${overallSeverity}", which indicates the level of pressure created by the decisions and gaps across the scenario.`;
+
+    const gapSummary = topGaps.length
+      ? `The most repeated gaps were: ${topGaps.join(", ")}. These areas should be reviewed because repeated gaps usually show where response planning, role clarity, or operational confidence may need improvement.`
+      : "No repeated gaps were clearly identified across the completed phases, which suggests that missed criteria were either minimal or not repeated consistently.";
+
+    const themeSummary = topThemes.length
+      ? `The most affected themes were: ${topThemes.join(", ")}. These themes highlight the main areas where future training, planning, or discussion may be useful.`
+      : "No repeated missed themes were clearly identified, which means there was no single theme that consistently appeared as a weakness.";
+
+    const recommendation =
+      "The main improvement priority is to make future responses more specific, structured, and action-focused. A stronger response should clearly explain what action will be taken, who should be involved, how information will be communicated, and how the situation will be monitored as it changes.";
+
+    return `${overallPerformance}\n\n${criteriaSummary}\n\n${gapSummary}\n\n${themeSummary}\n\n${recommendation}`;
   }, [
     decisionBreakdown,
     overallSeverity,
@@ -342,6 +349,348 @@ export default function SummaryPageClient({
       .filter((item) => item.phaseNumber === 1)
       .sort((a, b) => a.id.localeCompare(b.id))[0];
   }, [scenario.stages]);
+
+  const handleDownloadReport = async () => {
+    const result = await Swal.fire({
+      title: "Download report?",
+      text: "A PDF report with summary and visual bars will be downloaded.",
+      icon: "question",
+      showCancelButton: true,
+      confirmButtonText: "Download PDF",
+      cancelButtonText: "Cancel",
+      confirmButtonColor: "#0891b2",
+      cancelButtonColor: "#64748b",
+    });
+
+    if (!result.isConfirmed) return;
+
+    try {
+      const pdf = new jsPDF("p", "mm", "a4");
+
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      const margin = 14;
+      const contentWidth = pageWidth - margin * 2;
+      let y = 18;
+
+      const addPageIfNeeded = (extraHeight = 10) => {
+        if (y + extraHeight > pageHeight - margin) {
+          pdf.addPage();
+          y = 18;
+        }
+      };
+
+      const addTitle = (text: string) => {
+        addPageIfNeeded(14);
+        pdf.setFont("helvetica", "bold");
+        pdf.setFontSize(18);
+        pdf.text(text, margin, y);
+        y += 10;
+      };
+
+      const addSectionTitle = (text: string) => {
+        addPageIfNeeded(12);
+        pdf.setFont("helvetica", "bold");
+        pdf.setFontSize(13);
+        pdf.text(text, margin, y);
+        y += 7;
+      };
+
+      const addParagraph = (text: string) => {
+        if (!text?.trim()) return;
+
+        pdf.setFont("helvetica", "normal");
+        pdf.setFontSize(10);
+
+        const lines = pdf.splitTextToSize(text, contentWidth);
+
+        lines.forEach((line: string) => {
+          addPageIfNeeded(6);
+          pdf.text(line, margin, y);
+          y += 5;
+        });
+
+        y += 3;
+      };
+
+      const addKeyValue = (label: string, value: string | number) => {
+        addPageIfNeeded(7);
+        pdf.setFont("helvetica", "bold");
+        pdf.setFontSize(10);
+        pdf.text(`${label}:`, margin, y);
+
+        pdf.setFont("helvetica", "normal");
+        pdf.text(String(value), margin + 50, y);
+        y += 6;
+      };
+
+      const addCriteriaBarChart = () => {
+        addSectionTitle("Criteria Coverage Visual Summary");
+
+        if (!coverageTrend.length) {
+          addParagraph("No criteria coverage data was available.");
+          return;
+        }
+
+        addParagraph(
+          "The green bar shows matched criteria. The orange bar shows missed required criteria for each completed phase.",
+        );
+
+        const maxValue = Math.max(
+          1,
+          ...coverageTrend.map((item) => Math.max(item.matched, item.missed)),
+        );
+
+        const labelWidth = 25;
+        const barMaxWidth = contentWidth - labelWidth - 35;
+        const barHeight = 5;
+
+        coverageTrend.forEach((item) => {
+          addPageIfNeeded(22);
+
+          pdf.setFont("helvetica", "bold");
+          pdf.setFontSize(10);
+          pdf.text(item.phase, margin, y);
+
+          pdf.setFont("helvetica", "normal");
+          pdf.setFontSize(9);
+
+          const matchedWidth = (item.matched / maxValue) * barMaxWidth;
+          const missedWidth = (item.missed / maxValue) * barMaxWidth;
+
+          pdf.text("Matched", margin + labelWidth, y);
+
+          pdf.setFillColor(16, 185, 129);
+          pdf.rect(
+            margin + labelWidth + 22,
+            y - 4,
+            matchedWidth,
+            barHeight,
+            "F",
+          );
+
+          pdf.setTextColor(30, 41, 59);
+          pdf.text(
+            String(item.matched),
+            margin + labelWidth + 25 + matchedWidth,
+            y,
+          );
+
+          y += 8;
+
+          pdf.text("Missed", margin + labelWidth, y);
+
+          pdf.setFillColor(245, 158, 11);
+          pdf.rect(
+            margin + labelWidth + 22,
+            y - 4,
+            missedWidth,
+            barHeight,
+            "F",
+          );
+
+          pdf.setTextColor(30, 41, 59);
+          pdf.text(
+            String(item.missed),
+            margin + labelWidth + 25 + missedWidth,
+            y,
+          );
+
+          y += 10;
+        });
+
+        y += 3;
+      };
+
+      const addDecisionBreakdownBars = () => {
+        addSectionTitle("Response Quality Visual Summary");
+
+        if (!decisionBreakdown.length) {
+          addParagraph("No response quality data was available.");
+          return;
+        }
+
+        addParagraph(
+          "This section shows how many responses were rated strong, mixed, or limited.",
+        );
+
+        const maxValue = Math.max(
+          1,
+          ...decisionBreakdown.map((item) => item.value),
+        );
+        const labelWidth = 25;
+        const barMaxWidth = contentWidth - labelWidth - 30;
+        const barHeight = 6;
+
+        decisionBreakdown.forEach((item) => {
+          addPageIfNeeded(14);
+
+          const barWidth = (item.value / maxValue) * barMaxWidth;
+
+          if (item.name === "Strong") pdf.setFillColor(16, 185, 129);
+          else if (item.name === "Mixed") pdf.setFillColor(245, 158, 11);
+          else pdf.setFillColor(239, 68, 68);
+
+          pdf.setFont("helvetica", "bold");
+          pdf.setFontSize(10);
+          pdf.setTextColor(30, 41, 59);
+          pdf.text(item.name, margin, y);
+
+          pdf.rect(margin + labelWidth, y - 5, barWidth, barHeight, "F");
+
+          pdf.setFont("helvetica", "normal");
+          pdf.text(String(item.value), margin + labelWidth + barWidth + 4, y);
+
+          y += 10;
+        });
+
+        y += 3;
+      };
+
+      const safeFileName = scenario.title
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/(^-|-$)+/g, "");
+
+      addTitle("Biosecurity Simulation Report");
+
+      addKeyValue("Scenario", scenario.title);
+      addKeyValue("Generated date", new Date().toLocaleString());
+      addKeyValue("Completed phases", stageResponses.length);
+      addKeyValue("Overall severity", overallSeverity);
+      addKeyValue("Matched criteria", totalMatchedCriteria);
+      addKeyValue("Missed required criteria", totalMissedRequired);
+      addKeyValue("Final reflection", reflectionResponse ? "Yes" : "No");
+
+      y += 4;
+
+      addSectionTitle("Preparedness Summary");
+      localSummary.split("\n\n").forEach((paragraph) => {
+        addParagraph(paragraph);
+      });
+
+      addDecisionBreakdownBars();
+      addCriteriaBarChart();
+
+      addSectionTitle("Path Through the Exercise");
+
+      if (visitedPath.length > 0) {
+        visitedPath.forEach((item, index) => {
+          addParagraph(
+            `${index + 1}. Phase ${item.phaseNumber} — ${item.title} (${item.branchFamily}, ${item.decision})`,
+          );
+        });
+      } else {
+        addParagraph("No pathway data was recorded.");
+      }
+
+      if (repeatedGaps.length > 0) {
+        addSectionTitle("Most Repeated Gaps");
+
+        repeatedGaps.forEach((gap, index) => {
+          addParagraph(
+            `${index + 1}. ${gap.text}${gap.count > 1 ? ` (${gap.count} times)` : ""}`,
+          );
+        });
+      }
+
+      if (reflectionResponse) {
+        addSectionTitle("Final Reflection");
+        addParagraph(reflectionResponse.combinedAnswer);
+      }
+
+      addSectionTitle("Phase-by-Phase Details");
+
+      stageResponses.forEach((response) => {
+        const stage = scenario.stages.find(
+          (item) => item.id === response.stageId,
+        );
+
+        addSectionTitle(
+          `Phase ${response.phaseNumber} — ${stage?.title || response.stageId}`,
+        );
+
+        addKeyValue(
+          "Decision",
+          response.evaluation?.decision || "Not recorded",
+        );
+        addKeyValue(
+          "Severity",
+          response.evaluation?.scenarioSeverity || "Not recorded",
+        );
+
+        addParagraph(`Situation shown: ${response.scenarioTextShown}`);
+
+        const stageQuestions = stage?.questions || [];
+
+        if (stageQuestions.length > 0) {
+          stageQuestions.forEach((question, index) => {
+            addParagraph(
+              `Question ${index + 1}: ${question.text}\nAnswer: ${
+                response.answers?.[question.id]?.trim() || "No answer recorded."
+              }`,
+            );
+          });
+        } else {
+          addParagraph(`Response: ${response.combinedAnswer}`);
+        }
+
+        if (response.evaluation?.feedback) {
+          addParagraph(`Feedback: ${response.evaluation.feedback}`);
+        }
+
+        if (response.evaluation?.branchReason && response.phaseNumber > 1) {
+          addParagraph(`Branch reason: ${response.evaluation.branchReason}`);
+        }
+
+        if (response.evaluation?.strengths?.length) {
+          addParagraph(
+            `What was covered well: ${response.evaluation.strengths.join(", ")}`,
+          );
+        }
+
+        if (response.evaluation?.missedCriteriaTexts?.length) {
+          addParagraph(
+            `Main gaps: ${response.evaluation.missedCriteriaTexts.join(", ")}`,
+          );
+        }
+
+        y += 3;
+      });
+
+      const pageCount = pdf.getNumberOfPages();
+
+      for (let i = 1; i <= pageCount; i += 1) {
+        pdf.setPage(i);
+        pdf.setFont("helvetica", "normal");
+        pdf.setFontSize(9);
+        pdf.setTextColor(100, 116, 139);
+        pdf.text(
+          `Page ${i} of ${pageCount}`,
+          pageWidth - margin - 25,
+          pageHeight - 8,
+        );
+      }
+
+      pdf.save(`${safeFileName || "biosecurity-simulation"}-report.pdf`);
+
+      Swal.fire({
+        title: "Downloaded!",
+        text: "The report has been downloaded successfully.",
+        icon: "success",
+        confirmButtonColor: "#0891b2",
+      });
+    } catch (error) {
+      console.error("PDF generation error:", error);
+
+      Swal.fire({
+        title: "Download failed",
+        text: "The report could not be generated. Please try again.",
+        icon: "error",
+        confirmButtonColor: "#dc2626",
+      });
+    }
+  };
 
   const handleRestart = () => {
     resetStoredSession();
@@ -447,8 +796,69 @@ export default function SummaryPageClient({
       className="min-h-screen bg-cover bg-center bg-no-repeat"
       style={BACKGROUND_STYLE}
     >
-      <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
-        <section className="mb-8 rounded-3xl border border-white/10 bg-white/10 p-6 text-white shadow-2xl backdrop-blur-md">
+      <style jsx global>{`
+        @media print {
+          @page {
+            size: A4;
+            margin: 14mm;
+          }
+
+          html,
+          body {
+            background: #ffffff !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+
+          main {
+            background: #ffffff !important;
+          }
+
+          .no-print {
+            display: none !important;
+          }
+
+          .print-container {
+            max-width: 100% !important;
+            padding: 0 !important;
+          }
+
+          .print-header {
+            background: #0f172a !important;
+            color: #ffffff !important;
+            border: none !important;
+            box-shadow: none !important;
+          }
+
+          .report-card {
+            box-shadow: none !important;
+            border: 1px solid #e2e8f0 !important;
+            background: #ffffff !important;
+            break-inside: avoid;
+            page-break-inside: avoid;
+          }
+
+          .shadow-2xl,
+          .shadow-lg,
+          .shadow-md {
+            box-shadow: none !important;
+          }
+
+          section,
+          .rounded-3xl,
+          .rounded-2xl {
+            break-inside: avoid;
+            page-break-inside: avoid;
+          }
+
+          button {
+            display: none !important;
+          }
+        }
+      `}</style>
+
+      <div className="print-container mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
+        <section className="print-header mb-8 rounded-3xl border border-white/10 bg-white/10 p-6 text-white shadow-2xl backdrop-blur-md">
           <div className="mb-3 flex flex-wrap gap-2">
             <Badge className="border-0 bg-cyan-500 text-white">
               Simulation Summary
@@ -471,6 +881,16 @@ export default function SummaryPageClient({
             This summary highlights response quality, repeated gaps, pathway
             progression, and the main learning points across the exercise.
           </p>
+
+          <div className="no-print mt-5 flex flex-wrap gap-3">
+            <Button
+              onClick={handleDownloadReport}
+              className="rounded-2xl bg-cyan-600 px-5 py-2.5 font-semibold text-white shadow-md transition-all hover:-translate-y-0.5 hover:bg-cyan-700 hover:shadow-lg"
+            >
+              <Download className="mr-2 h-4 w-4" />
+              Download Report
+            </Button>
+          </div>
         </section>
 
         <section className="mb-6 grid gap-4 md:grid-cols-4">
@@ -486,22 +906,24 @@ export default function SummaryPageClient({
           />
         </section>
 
-        <section className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
-          <Card className="rounded-3xl border-0 bg-white/95 shadow-2xl">
+        <section className="grid items-stretch gap-6 lg:grid-cols-[1.2fr_0.8fr]">
+          <Card className="report-card h-full rounded-3xl border-0 bg-white/95 shadow-2xl">
             <CardHeader>
               <CardTitle>Preparedness Summary</CardTitle>
             </CardHeader>
 
-            <CardContent>
-              <div className="rounded-2xl border border-cyan-100 bg-cyan-50/70 p-5">
-                <p className="text-sm leading-7 text-slate-700">
-                  {localSummary}
-                </p>
+            <CardContent className="h-full">
+              <div className="h-full rounded-2xl border border-cyan-100 bg-cyan-50/70 p-5">
+                <div className="space-y-4 text-sm leading-7 text-slate-700">
+                  {localSummary.split("\n\n").map((paragraph, index) => (
+                    <p key={index}>{paragraph}</p>
+                  ))}
+                </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card className="rounded-3xl border-0 bg-white/95 shadow-2xl">
+          <Card className="report-card rounded-3xl border-0 bg-white/95 shadow-2xl">
             <CardHeader>
               <CardTitle>Exercise Overview</CardTitle>
             </CardHeader>
@@ -538,7 +960,7 @@ export default function SummaryPageClient({
                 </div>
               )}
 
-              <div className="flex flex-wrap gap-3 pt-3">
+              <div className="no-print flex flex-wrap gap-3 pt-3">
                 <Button
                   variant="outline"
                   onClick={handleBackToStart}
@@ -656,7 +1078,7 @@ export default function SummaryPageClient({
         </section>
 
         {repeatedGaps.length > 0 && (
-          <Card className="mt-6 rounded-3xl border-0 bg-white/95 shadow-2xl">
+          <Card className="report-card mt-6 rounded-3xl border-0 bg-white/95 shadow-2xl">
             <CardHeader>
               <CardTitle>Most Repeated Gaps</CardTitle>
             </CardHeader>
@@ -678,7 +1100,7 @@ export default function SummaryPageClient({
         )}
 
         {reflectionResponse && (
-          <Card className="mt-6 rounded-3xl border-0 bg-white/95 shadow-2xl">
+          <Card className="report-card mt-6 rounded-3xl border-0 bg-white/95 shadow-2xl">
             <CardHeader>
               <CardTitle>Final Reflection</CardTitle>
             </CardHeader>
@@ -707,7 +1129,7 @@ export default function SummaryPageClient({
             return (
               <Card
                 key={response.stageId}
-                className="rounded-3xl border-0 bg-white/95 shadow-2xl"
+                className="report-card rounded-3xl border-0 bg-white/95 shadow-2xl"
               >
                 <CardHeader>
                   <div className="flex flex-wrap items-center gap-2">
