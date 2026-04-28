@@ -53,7 +53,13 @@ const SYNONYM_MAP: Record<string, string[]> = {
   containment: ["control", "restriction", "quarantine", "isolation"],
   restrict: ["limit", "stop", "prevent", "block"],
   movement: ["transport", "transfer", "relocation"],
-  surveillance: ["monitoring", "inspection", "sampling", "observation", "survey"],
+  surveillance: [
+    "monitoring",
+    "inspection",
+    "sampling",
+    "observation",
+    "survey",
+  ],
   inspection: ["check", "site visit", "assessment", "monitoring"],
   tracing: ["trace", "track", "mapping", "pathway analysis"],
   communication: ["messaging", "briefing", "advice", "guidance", "updates"],
@@ -98,7 +104,9 @@ function keywordPhraseMatch(answer: string, keyword: string) {
 
   for (const token of keywordTokens) {
     const expanded = expandToken(token);
-    const hasMatch = expanded.some((candidate) => answerTokenSet.has(candidate));
+    const hasMatch = expanded.some((candidate) =>
+      answerTokenSet.has(candidate),
+    );
 
     if (hasMatch) {
       matchedCount += 1;
@@ -160,7 +168,9 @@ function getDecision(
   const totalCriteria = stage.criteria.length || 1;
   const matchedCount = matchedCriteriaIds.length;
   const missingRequiredCount = missingRequiredCriteriaIds.length;
-  const requiredCriteriaCount = stage.criteria.filter((criterion) => criterion.required).length;
+  const requiredCriteriaCount = stage.criteria.filter(
+    (criterion) => criterion.required,
+  ).length;
   const requiredMatchedCount = requiredCriteriaCount - missingRequiredCount;
   const coverageRatio = matchedCount / totalCriteria;
 
@@ -173,7 +183,8 @@ function getDecision(
 
   if (
     missingRequiredCount <= 1 &&
-    (coverageRatio >= 0.34 || requiredMatchedCount >= Math.max(1, requiredCriteriaCount - 1))
+    (coverageRatio >= 0.34 ||
+      requiredMatchedCount >= Math.max(1, requiredCriteriaCount - 1))
   ) {
     return "mixed";
   }
@@ -202,10 +213,9 @@ function resolveNextStageId(
   if (!routing) return "complete";
 
   if (missingRequiredCriteriaIds.length && routing.byMissingRequired) {
-    const priorityList =
-      routing.byMissingRequiredPriority?.length
-        ? routing.byMissingRequiredPriority
-        : missingRequiredCriteriaIds;
+    const priorityList = routing.byMissingRequiredPriority?.length
+      ? routing.byMissingRequiredPriority
+      : missingRequiredCriteriaIds;
 
     for (const criterionId of priorityList) {
       if (
@@ -260,7 +270,10 @@ function buildStrengths(stage: ScenarioStage, matchedCriteriaIds: string[]) {
     .slice(0, 4);
 }
 
-function buildMissedThemes(stage: ScenarioStage, missingRequiredCriteriaIds: string[]) {
+function buildMissedThemes(
+  stage: ScenarioStage,
+  missingRequiredCriteriaIds: string[],
+) {
   const themeSet = new Set<ThemeCategory>();
 
   stage.criteria.forEach((criterion) => {
@@ -303,12 +316,45 @@ function buildNextScenarioText(
   return "The next phase reflects a more difficult operational picture because too many important actions were not covered clearly enough.";
 }
 
+function isNonSubstantiveAnswer(answer: string) {
+  const cleaned = normaliseText(answer);
+
+  const nonSubstantivePhrases = [
+    "no idea",
+    "i dont know",
+    "i don't know",
+    "dont know",
+    "don't know",
+    "not sure",
+    "unsure",
+    "no clue",
+    "nothing",
+    "n/a",
+    "na",
+    "nil",
+    "none",
+  ];
+
+  if (nonSubstantivePhrases.includes(cleaned)) {
+    return true;
+  }
+
+  const tokens = tokenize(cleaned);
+
+  return tokens.length <= 2;
+}
+
 function buildFeedback(
   stage: ScenarioStage,
   matchedCriteriaIds: string[],
   missingRequiredCriteriaIds: string[],
   decision: EvaluationDecision,
+  userAnswer: string,
 ) {
+  if (isNonSubstantiveAnswer(userAnswer)) {
+    return "It looks like no clear response was provided for this stage. In a real response setting, this would usually create uncertainty because the team would not yet have enough information to understand the intended actions. The scenario will continue into a more pressured pathway so you can still explore what may happen when early priorities are not clearly identified.";
+  }
+
   const matched = stage.criteria.filter((criterion) =>
     matchedCriteriaIds.includes(criterion.id),
   );
@@ -317,31 +363,39 @@ function buildFeedback(
     missingRequiredCriteriaIds.includes(criterion.id),
   );
 
+  const formatList = (items: string[]) => {
+    if (!items.length) return "";
+    if (items.length === 1) return items[0];
+    if (items.length === 2) return `${items[0]} and ${items[1]}`;
+
+    return `${items.slice(0, -1).join(", ")}, and ${items[items.length - 1]}`;
+  };
+
   if (decision === "strong") {
     const matchedText = matched.length
-      ? matched.map((item) => item.text).join(", ")
-      : "the major expected response actions";
+      ? formatList(matched.map((item) => item.text))
+      : "the main operational priorities";
 
-    return `Your response showed a solid understanding of this stage and covered the main actions expected in the situation, especially ${matchedText}. The answer demonstrates that you recognised the key operational priorities clearly enough to keep the scenario on a more controlled pathway into the next phase.`;
+    return `This response demonstrates a clear understanding of the priorities at this stage. It gives strong attention to ${matchedText}, which supports a more coordinated and controlled response pathway.`;
   }
 
   if (decision === "mixed") {
     const matchedText = matched.length
-      ? matched.map((item) => item.text).join(", ")
-      : "some of the expected operational actions";
+      ? formatList(matched.map((item) => item.text))
+      : "some relevant operational priorities";
 
     const missedText = missed.length
-      ? missed.map((item) => item.text).join(", ")
-      : "a few important details";
+      ? formatList(missed.map((item) => item.text))
+      : "some areas that would benefit from more detail";
 
-    return `Your response showed some good judgement and did identify important actions, including ${matchedText}. However, it did not fully cover all of the critical areas, and there were still important gaps around ${missedText}. Because of that, the scenario can continue, but with more pressure and less confidence than a stronger answer would have created.`;
+    return `This response identifies some useful actions, particularly around ${matchedText}. To strengthen the response further, it would be helpful to give more attention to ${missedText}. The scenario therefore continues with some additional operational pressure, reflecting the areas that still need clarification.`;
   }
 
   const missedText = missed.length
-    ? missed.map((item) => item.text).join(", ")
-    : "several important operational actions";
+    ? formatList(missed.map((item) => item.text))
+    : "several important operational priorities";
 
-  return `Your response did not address enough of the critical priorities expected at this stage. In particular, it left major gaps around ${missedText}. Because those actions were not covered clearly enough, the scenario now moves into a more difficult consequence pathway where operational pressure and risk are higher.`;
+  return `This response provides a starting point, but it would benefit from stronger coverage of several priority actions for this stage. In particular, further consideration would be useful around ${missedText}. The scenario therefore moves into a more pressured pathway, reflecting the increased operational uncertainty and workload that can occur when these areas are not yet fully addressed.`;
 }
 
 export async function POST(req: NextRequest) {
@@ -398,7 +452,8 @@ export async function POST(req: NextRequest) {
     const missingRequiredCriteriaIds = criterionCoverage
       .filter(
         (item) =>
-          item.criterion.required && !matchedCriteriaIds.includes(item.criterion.id),
+          item.criterion.required &&
+          !matchedCriteriaIds.includes(item.criterion.id),
       )
       .map((item) => item.criterion.id);
 
@@ -436,6 +491,7 @@ export async function POST(req: NextRequest) {
       matchedCriteriaIds,
       missingRequiredCriteriaIds,
       decision,
+      userAnswer,
     );
 
     const result: StageEvaluationResult = {

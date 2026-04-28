@@ -51,6 +51,10 @@ export default function StagePageClient({
     });
   }, [stage.id]);
 
+  const getStageNarrative = (currentStage: ScenarioStage) => {
+    return currentStage.baseScenarioText || "";
+  };
+
   useEffect(() => {
     const initialiseAttempt = async () => {
       try {
@@ -104,14 +108,8 @@ export default function StagePageClient({
       return;
     }
 
-    const previousLinkedResponse = orderedResponses.find(
-      (response: any) => response.evaluation?.nextStageId === stage.id,
-    );
+    setScenarioTextShown(stage.baseScenarioText);
 
-    setScenarioTextShown(
-      previousLinkedResponse?.evaluation?.nextScenarioText ||
-        stage.baseScenarioText,
-    );
     setAnswers({});
     setFeedback("");
     setDecision(null);
@@ -184,6 +182,13 @@ export default function StagePageClient({
       setNextScenarioText(result.nextScenarioText || "");
       setHasSubmitted(true);
 
+      const nextStage = scenario.stages.find(
+        (item) => item.id === result.nextStageId,
+      );
+
+      const actualNextScenarioText =
+        nextStage?.baseScenarioText || result.nextScenarioText || "";
+
       const updatedSession = {
         ...session,
         scenarioId: scenario.id,
@@ -210,7 +215,7 @@ export default function StagePageClient({
               feedback: result.feedback,
               decision: result.decision,
               scenarioSeverity: result.scenarioSeverity,
-              nextScenarioText: result.nextScenarioText,
+              nextScenarioText: actualNextScenarioText,
               nextStageId: result.nextStageId,
               branchReason: result.branchReason,
               strengths: result.strengths || [],
@@ -235,7 +240,7 @@ export default function StagePageClient({
           decision: result.decision,
           feedback: result.feedback,
           scenarioSeverity: result.scenarioSeverity,
-          nextScenarioText: result.nextScenarioText,
+          nextScenarioText: actualNextScenarioText,
           nextStageId: result.nextStageId,
           branchReason: result.branchReason,
           matchedCriteriaIds: result.matchedCriteriaIds || [],
